@@ -1,1422 +1,3469 @@
 <!doctype html>
 <html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Social Algorithm Video Editor — ChatGPT MCP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #080b12;
+        --panel: #101521;
+        --muted: #8f9bb3;
+        --line: #252d3d;
+        --cyan: #64e7ff;
+        --yellow: #ffd54a;
+        --green: #67f5a5;
+        --red: #ff6b7a;
+        --white: #f7f9ff;
+      }
 
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Social Algorithm Video Editor — ChatGPT MCP</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet">
-  <style>
-    :root {
-      --bg: #080b12;
-      --panel: #101521;
-      --muted: #8f9bb3;
-      --line: #252d3d;
-      --cyan: #64e7ff;
-      --yellow: #ffd54a;
-      --green: #67f5a5;
-      --red: #ff6b7a;
-      --white: #f7f9ff
-    }
+      * {
+        box-sizing: border-box;
+      }
 
-    * {
-      box-sizing: border-box
-    }
+      body {
+        margin: 0;
+        background: linear-gradient(135deg, #080b12, #0d1220 55%, #080b12);
+        color: var(--white);
+        font-family: "Be Vietnam Pro", Inter, system-ui, sans-serif;
+        min-height: 0;
+      }
 
-    body {
-      margin: 0;
-      background: linear-gradient(135deg, #080b12, #0d1220 55%, #080b12);
-      color: var(--white);
-      font-family: "Be Vietnam Pro", Inter, system-ui, sans-serif;
-      min-height: 0
-    }
-
-    .app {
-      display: grid;
-      grid-template-columns: minmax(270px, 340px) minmax(520px, 1fr) minmax(270px, 340px);
-      gap: 24px;
-      padding: 24px;
-      max-width: 1680px;
-      margin: auto
-    }
-
-    .left,
-    .right,
-    .ai-panel {
-      background: rgba(16, 21, 33, .94);
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, .28)
-    }
-
-    .left {
-      padding: 18px;
-      max-height: calc(100vh - 48px);
-      overflow: auto
-    }
-
-    .ai-panel {
-      padding: 18px;
-      max-height: calc(100vh - 48px);
-      overflow: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 12px
-    }
-
-    .right {
-      padding: 18px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px
-    }
-
-    h1 {
-      font-size: 20px;
-      margin: 0 0 5px
-    }
-
-    .sub {
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.55;
-      margin-bottom: 14px
-    }
-
-    .tip {
-      border: 1px solid #314057;
-      background: #0b1220;
-      border-radius: 12px;
-      padding: 10px 12px;
-      color: #cbd5e1;
-      font-size: 11px;
-      line-height: 1.6;
-      margin-bottom: 14px
-    }
-
-    .tip b {
-      color: var(--cyan)
-    }
-
-    .scene {
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 12px;
-      margin: 10px 0;
-      background: #0c111c;
-      cursor: pointer
-    }
-
-    .scene.active {
-      border-color: var(--cyan);
-      box-shadow: 0 0 0 1px rgba(100, 231, 255, .2)
-    }
-
-    .scene-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 8px
-    }
-
-    .scene-title {
-      font-weight: 700;
-      font-size: 13px
-    }
-
-    .time {
-      font-size: 11px;
-      color: var(--cyan);
-      font-variant-numeric: tabular-nums
-    }
-
-    .row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      justify-content: space-between
-    }
-
-    label {
-      font-size: 11px;
-      color: var(--muted)
-    }
-
-    input[type=number],
-    select {
-      background: #080d16;
-      color: var(--white);
-      border: 1px solid #263044;
-      border-radius: 9px;
-      padding: 7px 8px;
-      font: inherit;
-      font-size: 12px;
-      outline: none
-    }
-
-    input[type=number] {
-      width: 82px
-    }
-
-    .canvas-wrap {
-      position: relative;
-      width: min(47vh, 405px);
-      aspect-ratio: 9/16;
-      border-radius: 18px;
-      overflow: hidden;
-      border: 1px solid #2c3549;
-      background: #05070b;
-      box-shadow: 0 18px 60px rgba(0, 0, 0, .5);
-      user-select: none
-    }
-
-    .canvas-wrap.editing {
-      box-shadow: 0 0 0 2px rgba(100, 231, 255, .5), 0 18px 60px rgba(0, 0, 0, .5)
-    }
-
-    canvas {
-      width: 100%;
-      height: 100%;
-      display: block
-    }
-
-    .edit-badge {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: #0b1220d9;
-      border: 1px solid #33415a;
-      border-radius: 999px;
-      padding: 5px 9px;
-      font-size: 10px;
-      color: #9fb2cd;
-      pointer-events: none
-    }
-
-    .edit-badge b {
-      color: var(--cyan)
-    }
-
-    .inline-editor {
-      position: absolute;
-      display: none;
-      z-index: 5;
-      min-width: 90px;
-      min-height: 34px;
-      padding: 4px 6px;
-      border: 1px dashed var(--cyan);
-      outline: none;
-      background: #07101bdc;
-      color: #fff;
-      border-radius: 8px;
-      white-space: pre-wrap;
-      overflow: hidden;
-      text-align: center;
-      line-height: 1.12;
-      box-shadow: 0 8px 24px #0008;
-      user-select: text
-    }
-
-    .inline-editor.active {
-      display: block
-    }
-
-    .selection-box {
-      position: absolute;
-      display: none;
-      z-index: 4;
-      border: 1px solid var(--cyan);
-      pointer-events: none;
-      border-radius: 6px;
-      box-shadow: 0 0 0 1px #64e7ff33
-    }
-
-    .selection-box.active {
-      display: block
-    }
-
-    .text-tools {
-      width: min(760px, 100%);
-      display: grid;
-      grid-template-columns: 1.5fr repeat(5, auto);
-      gap: 8px;
-      align-items: end;
-      border: 1px solid #283348;
-      background: #0b101b;
-      border-radius: 12px;
-      padding: 10px
-    }
-
-    .tool-group {
-      display: grid;
-      gap: 4px
-    }
-
-    .tool-name {
-      font-size: 10px;
-      color: var(--muted)
-    }
-
-    .selected-name {
-      font-size: 11px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      color: #d8e5f5;
-      max-width: 230px
-    }
-
-    .text-tools input[type=number] {
-      width: 72px
-    }
-
-    .text-tools select {
-      min-width: 84px
-    }
-
-    .text-tools button {
-      padding: 8px 10px
-    }
-
-    .text-tools.disabled {
-      opacity: .5;
-      pointer-events: none
-    }
-
-    .controls {
-      width: min(760px, 100%);
-      display: grid;
-      gap: 10px
-    }
-
-    .buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center
-    }
-
-    button {
-      appearance: none;
-      border: 1px solid #2a354a;
-      background: #151c2a;
-      color: var(--white);
-      padding: 9px 13px;
-      border-radius: 10px;
-      font: 600 12px inherit;
-      cursor: pointer
-    }
-
-    button:hover {
-      border-color: #4c5d7d
-    }
-
-    button.primary {
-      background: linear-gradient(135deg, #28cfe8, #6b8cff);
-      border: none;
-      color: #061018
-    }
-
-    button.export {
-      background: linear-gradient(135deg, #ffd54a, #ff9f43);
-      border: none;
-      color: #1a1100
-    }
-
-    button:disabled {
-      opacity: .45;
-      cursor: not-allowed
-    }
-
-    .scrub {
-      display: grid;
-      grid-template-columns: 58px 1fr 58px;
-      gap: 8px;
-      align-items: center;
-      font-size: 11px;
-      color: var(--muted)
-    }
-
-    input[type=range] {
-      width: 100%
-    }
-
-    .audio {
-      width: min(760px, 100%);
-      border: 1px dashed #334057;
-      border-radius: 12px;
-      padding: 10px;
-      font-size: 11px;
-      color: var(--muted);
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      justify-content: space-between
-    }
-
-    .audio input {
-      max-width: 280px
-    }
-
-    .status {
-      font-size: 11px;
-      color: var(--muted);
-      text-align: center;
-      min-height: 18px
-    }
-
-    .legend {
-      font-size: 10px;
-      color: #6f7a91;
-      line-height: 1.6;
-      text-align: center
-    }
-
-    @media(max-width:1180px) {
       .app {
-        grid-template-columns: 1fr
+        display: grid;
+        grid-template-columns: minmax(270px, 340px) minmax(520px, 1fr) minmax(
+            270px,
+            340px
+          );
+        gap: 24px;
+        padding: 24px;
+        max-width: 1680px;
+        margin: auto;
+      }
+
+      .left,
+      .right,
+      .ai-panel {
+        background: rgba(16, 21, 33, 0.94);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
       }
 
       .left {
-        max-height: none;
-        order: 2
-      }
-
-      .right {
-        order: 1
-      }
-
-      .canvas-wrap {
-        width: min(72vw, 405px)
-      }
-
-      .text-tools {
-        grid-template-columns: 1fr 1fr 1fr
-      }
-
-      .selected-name {
-        max-width: none
+        padding: 18px;
+        max-height: calc(100vh - 48px);
+        overflow: auto;
       }
 
       .ai-panel {
-        order: 3;
-        max-height: none
+        padding: 18px;
+        max-height: calc(100vh - 48px);
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
       }
-    }
 
-    .ai-title {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px
-    }
+      .right {
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+      }
 
-    .ai-title h2 {
-      margin: 0;
-      font-size: 16px
-    }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 5px;
+      }
 
-    .ai-badge {
-      font-size: 10px;
-      border: 1px solid #2b3a51;
-      border-radius: 999px;
-      padding: 4px 7px;
-      color: var(--cyan)
-    }
+      .sub {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.55;
+        margin-bottom: 14px;
+      }
 
-    .ai-context {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 10px;
-      background: #0b101b;
-      font-size: 11px;
-      color: #b9c6da;
-      line-height: 1.55
-    }
+      .tip {
+        border: 1px solid #314057;
+        background: #0b1220;
+        border-radius: 12px;
+        padding: 10px 12px;
+        color: #cbd5e1;
+        font-size: 11px;
+        line-height: 1.6;
+        margin-bottom: 14px;
+      }
 
-    .ai-context b {
-      color: #fff
-    }
+      .tip b {
+        color: var(--cyan);
+      }
 
-    .ai-panel textarea {
-      width: 100%;
-      min-height: 128px;
-      resize: vertical;
-      background: #080d16;
-      color: #fff;
-      border: 1px solid #2a354a;
-      border-radius: 12px;
-      padding: 11px;
-      font: 500 12px/1.55 system-ui, sans-serif;
-      outline: none
-    }
+      .scene {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        margin: 10px 0;
+        background: #0c111c;
+        cursor: pointer;
+      }
 
-    .ai-panel textarea:focus {
-      border-color: var(--cyan);
-      box-shadow: 0 0 0 2px #64e7ff18
-    }
+      .scene.active {
+        border-color: var(--cyan);
+        box-shadow: 0 0 0 1px rgba(100, 231, 255, 0.2);
+      }
 
-    .ai-actions {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 8px
-    }
+      .scene-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
 
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px
-    }
+      .scene-title {
+        font-weight: 700;
+        font-size: 13px;
+      }
 
-    .chip {
-      font-size: 10px;
-      padding: 6px 8px;
-      border-radius: 999px;
-      background: #0d1421;
-      border: 1px solid #29364b;
-      color: #c7d3e5
-    }
+      .time {
+        font-size: 11px;
+        color: var(--cyan);
+        font-variant-numeric: tabular-nums;
+      }
 
-    .ai-note {
-      font-size: 10px;
-      color: var(--muted);
-      line-height: 1.55
-    }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        justify-content: space-between;
+      }
 
-    .sync-dot {
-      display: inline-block;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #67f5a5;
-      margin-right: 6px
-    }
+      label {
+        font-size: 11px;
+        color: var(--muted);
+      }
 
-    .sync-dot.off {
-      background: #ff9f43
-    }
+      input[type="number"],
+      select {
+        background: #080d16;
+        color: var(--white);
+        border: 1px solid #263044;
+        border-radius: 9px;
+        padding: 7px 8px;
+        font: inherit;
+        font-size: 12px;
+        outline: none;
+      }
 
-    .host-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap
-    }
+      input[type="number"] {
+        width: 82px;
+      }
 
-    .host-actions button {
-      flex: 1
-    }
+      .canvas-wrap {
+        position: relative;
+        width: min(47vh, 405px);
+        aspect-ratio: 9/16;
+        border-radius: 18px;
+        overflow: hidden;
+        border: 1px solid #2c3549;
+        background: #05070b;
+        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5);
+        user-select: none;
+      }
 
-    .scene-ai {
-      margin-top: 8px;
-      width: 100%;
-      font-size: 10px;
-      padding: 6px 8px
-    }
+      .canvas-wrap.editing {
+        box-shadow:
+          0 0 0 2px rgba(100, 231, 255, 0.5),
+          0 18px 60px rgba(0, 0, 0, 0.5);
+      }
 
-    .server-state {
-      font-size: 10px;
-      color: #8390a7
-    }
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
 
-    .right {
-      min-width: 0
-    }
+      .edit-badge {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: #0b1220d9;
+        border: 1px solid #33415a;
+        border-radius: 999px;
+        padding: 5px 9px;
+        font-size: 10px;
+        color: #9fb2cd;
+        pointer-events: none;
+      }
 
-    .ai-panel.flash {
-      border-color: rgba(100, 231, 255, .65);
-      box-shadow: 0 0 0 1px rgba(100, 231, 255, .24), 0 20px 60px rgba(0, 0, 0, .28)
-    }
+      .edit-badge b {
+        color: var(--cyan);
+      }
 
-    /* ChatGPT/MCP presentation modes. Inline stays compact; fullscreen restores the full editor. */
-    .inline-hint {
-      display: none;
-      width: 100%;
-      padding: 8px 10px;
-      border: 1px solid #29425a;
-      border-radius: 10px;
-      background: #0b1522;
-      color: #bdd0e6;
-      font-size: 10px;
-      line-height: 1.45;
-      text-align: center
-    }
+      .inline-editor {
+        position: absolute;
+        display: none;
+        z-index: 5;
+        min-width: 90px;
+        min-height: 34px;
+        padding: 4px 6px;
+        border: 1px dashed var(--cyan);
+        outline: none;
+        background: #07101bdc;
+        color: #fff;
+        border-radius: 8px;
+        white-space: pre-wrap;
+        overflow: hidden;
+        text-align: center;
+        line-height: 1.12;
+        box-shadow: 0 8px 24px #0008;
+        user-select: text;
+      }
 
-    html.mcp-inline body {
-      min-height: 0;
-      background: #080b12;
-      overflow: auto
-    }
+      .inline-editor.active {
+        display: block;
+      }
 
-    html.mcp-inline .app {
-      grid-template-columns: minmax(360px, 1fr) minmax(250px, 285px);
-      grid-template-areas: "right ai";
-      gap: 10px;
-      padding: 10px;
-      max-width: none;
-      align-items: start
-    }
+      .selection-box {
+        position: absolute;
+        display: none;
+        z-index: 4;
+        border: 1px solid var(--cyan);
+        pointer-events: none;
+        border-radius: 6px;
+        box-shadow: 0 0 0 1px #64e7ff33;
+      }
 
-    html.mcp-inline .left {
-      display: none
-    }
+      .selection-box.active {
+        display: block;
+      }
 
-    html.mcp-inline .right {
-      grid-area: right;
-      padding: 10px;
-      gap: 8px;
-      border-radius: 14px
-    }
+      .text-tools {
+        width: min(760px, 100%);
+        display: grid;
+        grid-template-columns: 1.5fr repeat(5, auto);
+        gap: 8px;
+        align-items: end;
+        border: 1px solid #283348;
+        background: #0b101b;
+        border-radius: 12px;
+        padding: 10px;
+      }
 
-    html.mcp-inline .ai-panel {
-      grid-area: ai;
-      padding: 10px;
-      gap: 8px;
-      max-height: 520px;
-      overflow: auto;
-      border-radius: 14px
-    }
+      .tool-group {
+        display: grid;
+        gap: 4px;
+      }
 
-    html.mcp-inline .canvas-wrap {
-      width: min(34vw, 235px);
-      max-width: 235px;
-      border-radius: 14px
-    }
+      .tool-name {
+        font-size: 10px;
+        color: var(--muted);
+      }
 
-    html.mcp-inline .inline-hint {
-      display: block
-    }
+      .selected-name {
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #d8e5f5;
+        max-width: 230px;
+      }
 
-    html.mcp-inline .text-tools,
-    html.mcp-inline .audio,
-    html.mcp-inline .legend,
-    html.mcp-inline .scrub {
-      display: none
-    }
+      .text-tools input[type="number"] {
+        width: 72px;
+      }
 
-    html.mcp-inline #webm,
-    html.mcp-inline #mp4,
-    html.mcp-inline #reset {
-      display: none
-    }
+      .text-tools select {
+        min-width: 84px;
+      }
 
-    html.mcp-inline .controls {
-      width: 100%
-    }
+      .text-tools button {
+        padding: 8px 10px;
+      }
 
-    html.mcp-inline .buttons {
-      gap: 6px
-    }
+      .text-tools.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+      }
 
-    html.mcp-inline button {
-      padding: 7px 9px;
-      font-size: 11px
-    }
+      .controls {
+        width: min(760px, 100%);
+        display: grid;
+        gap: 10px;
+      }
 
-    html.mcp-inline .ai-panel textarea {
-      min-height: 84px
-    }
+      .buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+      }
 
-    html.mcp-inline .ai-context {
-      max-height: 112px;
-      overflow: auto
-    }
+      button {
+        appearance: none;
+        border: 1px solid #2a354a;
+        background: #151c2a;
+        color: var(--white);
+        padding: 9px 13px;
+        border-radius: 10px;
+        font: 600 12px inherit;
+        cursor: pointer;
+      }
 
-    html.mcp-inline .status {
-      font-size: 10px
-    }
+      button:hover {
+        border-color: #4c5d7d;
+      }
 
-    html.mcp-fullscreen body {
-      min-height: 100vh;
-      overflow: auto
-    }
+      button.primary {
+        background: linear-gradient(135deg, #28cfe8, #6b8cff);
+        border: none;
+        color: #061018;
+      }
 
-    html.mcp-fullscreen .inline-hint {
-      display: none
-    }
+      button.export {
+        background: linear-gradient(135deg, #ffd54a, #ff9f43);
+        border: none;
+        color: #1a1100;
+      }
 
-    @media(max-width:720px) {
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      .scrub {
+        display: grid;
+        grid-template-columns: 58px 1fr 58px;
+        gap: 8px;
+        align-items: center;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      input[type="range"] {
+        width: 100%;
+      }
+
+      .audio {
+        width: min(760px, 100%);
+        border: 1px dashed #334057;
+        border-radius: 12px;
+        padding: 10px;
+        font-size: 11px;
+        color: var(--muted);
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .audio input {
+        max-width: 280px;
+      }
+
+      .status {
+        font-size: 11px;
+        color: var(--muted);
+        text-align: center;
+        min-height: 18px;
+      }
+
+      .legend {
+        font-size: 10px;
+        color: #6f7a91;
+        line-height: 1.6;
+        text-align: center;
+      }
+
+      @media (max-width: 1180px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+
+        .left {
+          max-height: none;
+          order: 2;
+        }
+
+        .right {
+          order: 1;
+        }
+
+        .canvas-wrap {
+          width: min(72vw, 405px);
+        }
+
+        .text-tools {
+          grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        .selected-name {
+          max-width: none;
+        }
+
+        .ai-panel {
+          order: 3;
+          max-height: none;
+        }
+      }
+
+      .ai-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .ai-title h2 {
+        margin: 0;
+        font-size: 16px;
+      }
+
+      .ai-badge {
+        font-size: 10px;
+        border: 1px solid #2b3a51;
+        border-radius: 999px;
+        padding: 4px 7px;
+        color: var(--cyan);
+      }
+
+      .ai-context {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        background: #0b101b;
+        font-size: 11px;
+        color: #b9c6da;
+        line-height: 1.55;
+      }
+
+      .ai-context b {
+        color: #fff;
+      }
+
+      .ai-panel textarea {
+        width: 100%;
+        min-height: 128px;
+        resize: vertical;
+        background: #080d16;
+        color: #fff;
+        border: 1px solid #2a354a;
+        border-radius: 12px;
+        padding: 11px;
+        font:
+          500 12px/1.55 system-ui,
+          sans-serif;
+        outline: none;
+      }
+
+      .ai-panel textarea:focus {
+        border-color: var(--cyan);
+        box-shadow: 0 0 0 2px #64e7ff18;
+      }
+
+      .ai-actions {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .chip {
+        font-size: 10px;
+        padding: 6px 8px;
+        border-radius: 999px;
+        background: #0d1421;
+        border: 1px solid #29364b;
+        color: #c7d3e5;
+      }
+
+      .ai-note {
+        font-size: 10px;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .sync-dot {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #67f5a5;
+        margin-right: 6px;
+      }
+
+      .sync-dot.off {
+        background: #ff9f43;
+      }
+
+      .host-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .host-actions button {
+        flex: 1;
+      }
+
+      .scene-ai {
+        margin-top: 8px;
+        width: 100%;
+        font-size: 10px;
+        padding: 6px 8px;
+      }
+
+      .server-state {
+        font-size: 10px;
+        color: #8390a7;
+      }
+
+      .right {
+        min-width: 0;
+      }
+
+      .ai-panel.flash {
+        border-color: rgba(100, 231, 255, 0.65);
+        box-shadow:
+          0 0 0 1px rgba(100, 231, 255, 0.24),
+          0 20px 60px rgba(0, 0, 0, 0.28);
+      }
+
+      /* ChatGPT/MCP presentation modes. Inline stays compact; fullscreen restores the full editor. */
+      .inline-hint {
+        display: none;
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #29425a;
+        border-radius: 10px;
+        background: #0b1522;
+        color: #bdd0e6;
+        font-size: 10px;
+        line-height: 1.45;
+        text-align: center;
+      }
+
+      html.mcp-inline body {
+        min-height: 0;
+        background: #080b12;
+        overflow: auto;
+      }
+
       html.mcp-inline .app {
-        grid-template-columns: 1fr;
-        grid-template-areas: "right" "ai"
+        grid-template-columns: minmax(360px, 1fr) minmax(250px, 285px);
+        grid-template-areas: "right ai";
+        gap: 10px;
+        padding: 10px;
+        max-width: none;
+        align-items: start;
       }
 
-      html.mcp-inline .canvas-wrap {
-        width: min(58vw, 235px)
+      html.mcp-inline .left {
+        display: none;
+      }
+
+      html.mcp-inline .right {
+        grid-area: right;
+        padding: 10px;
+        gap: 8px;
+        border-radius: 14px;
       }
 
       html.mcp-inline .ai-panel {
-        max-height: 300px
+        grid-area: ai;
+        padding: 10px;
+        gap: 8px;
+        max-height: 520px;
+        overflow: auto;
+        border-radius: 14px;
       }
-    }
-    .studio-shell{background:#080b12;color:var(--white)}
-    .studio-top{height:68px;padding:0 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:#0b0f18;position:sticky;top:0;z-index:30}
-    .studio-brand{font-weight:800;letter-spacing:-.03em}.studio-brand span{color:var(--cyan)}
-    .studio-view{padding:42px max(24px,6vw);animation:viewIn .32s ease both}.studio-view[hidden],.app[hidden]{display:none!important}
-    @keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-    .view-head{display:flex;align-items:end;justify-content:space-between;gap:24px;border-bottom:1px solid var(--line);padding-bottom:24px;margin-bottom:8px}
-    .view-head h2{font-size:clamp(28px,4vw,54px);letter-spacing:-.05em;margin:0}.view-head p{color:var(--muted);max-width:520px;line-height:1.7;margin:8px 0 0}
-    .project-row{display:grid;grid-template-columns:minmax(0,1fr) 130px 120px 32px;gap:18px;align-items:center;padding:22px 4px;border-bottom:1px solid var(--line);cursor:pointer;transition:.2s ease}
-    .project-row:hover{padding-left:14px;background:#ffffff05}.project-row h3{margin:0 0 6px;font-size:17px}.project-meta,.project-state{font-size:12px;color:var(--muted)}
-    .project-state{color:var(--green);text-transform:uppercase;letter-spacing:.08em}.arrow{font-size:24px;color:var(--cyan)}
-    .studio-btn{border:1px solid #344158;background:#111827;color:var(--white);border-radius:10px;padding:11px 16px;font:600 12px inherit;cursor:pointer}.studio-btn.primary{background:var(--cyan);border-color:var(--cyan);color:#041016}
-    .create-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:48px;max-width:1180px}.field{margin:0 0 22px}.field label{display:block;margin-bottom:9px;font-size:12px}.field input,.field textarea{width:100%;border:1px solid #2b3548;background:#0c111c;color:#fff;border-radius:12px;padding:14px;font:inherit;outline:none}.field textarea{min-height:360px;resize:vertical;line-height:1.7}.field input:focus,.field textarea:focus{border-color:var(--cyan)}
-    .steps{border-left:1px solid var(--line);padding-left:26px}.step{padding:0 0 28px;color:#657086}.step strong{display:block;color:#aab4c8;margin-bottom:6px}.step.active strong{color:var(--cyan)}
-    .plan-list{max-width:1000px}.plan-item{display:grid;grid-template-columns:54px 180px minmax(0,1fr) 80px;gap:18px;padding:20px 0;border-bottom:1px solid var(--line);align-items:start}.plan-no{font:700 12px inherit;color:var(--cyan)}.plan-item input,.plan-item textarea{width:100%;background:transparent;color:#fff;border:0;border-bottom:1px solid #313b4d;padding:5px 2px;font:inherit;resize:vertical}.plan-item textarea{min-height:72px;line-height:1.55}.plan-purpose{font-size:11px;color:var(--muted);margin-top:8px}.plan-actions{position:sticky;bottom:0;background:#080b12e8;backdrop-filter:blur(12px);padding:18px 0;display:flex;justify-content:flex-end;gap:10px}
-    .workflow-card{border:1px solid #273044;background:#0b111b;border-radius:18px;padding:18px 20px;margin:0 0 26px;line-height:1.7}
-    .workflow-card strong{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
-    .workflow-card p{margin:0;color:#dbe5f5}
-    .workflow-card.pending{border-color:#35506a;background:#09111d}
-    .workflow-card.ready{border-color:#30523f;background:#0b1712}
-    .workflow-card.warn{border-color:#6a5635;background:#171108}
-    .field-note{font-size:12px;color:var(--muted);margin-top:-10px;margin-bottom:16px}
-    .style-box{border:1px solid #283245;background:#0a0f18;border-radius:14px;padding:14px 16px;font-size:12px;color:#d4dceb;line-height:1.7;margin-bottom:22px}
-    .style-box b{color:var(--cyan)}
-    .editor-nav{display:flex;align-items:center;gap:12px}.editor-nav-title{font-size:12px;color:var(--muted)}
-    @media(max-width:760px){.studio-view{padding:28px 18px}.view-head,.create-layout{display:block}.view-head .studio-btn{margin-top:18px}.steps{display:none}.project-row{grid-template-columns:1fr 28px}.project-row>:nth-child(2),.project-row>:nth-child(3){display:none}.plan-item{grid-template-columns:34px 1fr}.plan-item>:nth-child(3),.plan-item>:nth-child(4){grid-column:2}}
-  </style>
-</head>
 
-<body>
-  <div class="studio-shell" id="studioShell">
-    <header class="studio-top"><div class="studio-brand">FRAME<span>AI</span></div><div class="editor-nav"><span class="editor-nav-title" id="currentProjectTitle"></span><button class="studio-btn" id="backProjects">← Projects</button></div></header>
-    <main class="studio-view" id="projectsView">
-      <div class="view-head"><div><h2>Projects</h2><p>Mỗi project là một file JSON độc lập, sẵn sàng để tiếp tục từ đúng trạng thái gần nhất.</p></div><button class="studio-btn primary" id="newProject">+ Tạo project</button></div>
-      <div id="projectRows"></div>
-    </main>
-    <main class="studio-view" id="createView" hidden>
-      <div class="view-head"><div><h2>Project mới</h2><p>Đưa kịch bản thô vào đây. AI sẽ chia nội dung thành các màn để bạn duyệt trước khi dựng khung edit.</p></div></div>
-      <div class="create-layout"><div><div class="field"><label>Tên project</label><input id="projectTitle" placeholder="Ví dụ: 5 cách xây kênh cá nhân"></div><div class="field"><label>Link YouTube nguồn (tuỳ chọn)</label><input id="projectSourceUrl" placeholder="https://www.youtube.com/watch?v=..."></div><div class="field"><label>Kịch bản / note nguồn</label><textarea id="projectScript" placeholder="Dán toàn bộ kịch bản video, transcript, note phân tích..."></textarea><div class="field-note" id="scriptNote">Nhập script hoặc ít nhất dán link nguồn. ChatGPT sẽ phân tích theo style edit riêng trước khi dựng layout.</div></div><div class="style-box"><b>Style edit đang áp dụng</b><br>HOOK → GIẢI THÍCH → VISUAL → INSIGHT → KẾT LUẬN · 60–90s · ưu tiên voice ngắn, visual đổi 2–4 giây/lần, subtitle ngắn và motion graphic cho flow/số liệu.</div><button class="studio-btn primary" id="analyzeScript">Phân tích kịch bản với ChatGPT →</button></div><aside class="steps"><div class="step active"><strong>01 · Kịch bản</strong>Nguồn nội dung gốc</div><div class="step"><strong>02 · Nội dung các màn</strong>AI đề xuất, bạn chỉnh sửa</div><div class="step"><strong>03 · Khung edit</strong>AI tạo layout và layers</div></aside></div>
-    </main>
-    <main class="studio-view" id="planView" hidden>
-      <div class="view-head"><div><h2>Duyệt nội dung</h2><p>Chỉnh trực tiếp tiêu đề, nội dung và thời lượng. Khi xác nhận, ChatGPT mới bắt đầu tạo khung edit.</p></div></div>
-      <div class="workflow-card pending" id="workflowCard"><strong>Đang chờ AI</strong><p>Project vừa tạo. ChatGPT sẽ đọc kịch bản hoặc link nguồn, áp dụng style edit riêng và lưu đề xuất nội dung cho từng màn vào JSON này.</p></div>
-      <div class="plan-list" id="planList"></div><div class="plan-actions"><button class="studio-btn" id="savePlan">Lưu nháp</button><button class="studio-btn primary" id="confirmPlan">Xác nhận & tạo khung edit →</button></div>
-    </main>
-  </div>
-  <div class="app" id="editorApp" hidden>
-    <section class="left">
-      <h1>Social Algorithm — AI Video Editor</h1>
-      <div class="sub">Video dọc 9:16 • sửa chữ trực tiếp • đồng bộ scene với ChatGPT qua MCP.</div>
-      <div class="tip"><b>Cách sửa chữ:</b> double-click vào dòng chữ trên khung video → gõ trực tiếp → Ctrl/Cmd + Enter
-        hoặc click ra ngoài để lưu. Click 1 lần để chọn text rồi chỉnh size/weight/căn lề/X/Y.</div>
-      <div id="sceneList"></div>
-    </section>
-    <section class="right">
-      <div class="inline-hint">Đang ở chế độ inline. Editor sẽ thử mở Fullscreen tự động; nếu chưa mở, bấm <b>⛶
-          Fullscreen</b>.</div>
-      <div class="canvas-wrap" id="canvasWrap">
-        <canvas id="c" width="540" height="960"></canvas>
-        <div class="selection-box" id="selectionBox"></div>
-        <div class="inline-editor" id="inlineEditor" contenteditable="true" spellcheck="false"></div>
-        <div class="edit-badge"><b>DOUBLE-CLICK</b> để sửa chữ</div>
-      </div>
+      html.mcp-inline .canvas-wrap {
+        width: min(34vw, 235px);
+        max-width: 235px;
+        border-radius: 14px;
+      }
 
-      <div class="text-tools disabled" id="textTools">
-        <div class="tool-group"><span class="tool-name">Text đang chọn</span><span class="selected-name"
-            id="selectedName">Chưa chọn</span></div>
-        <div class="tool-group"><label>Size</label><input id="fontSize" type="number" min="12" max="120" step="1"></div>
-        <div class="tool-group"><label>Weight</label><select id="fontWeight">
-            <option>400</option>
-            <option>500</option>
-            <option>600</option>
-            <option>700</option>
-            <option selected>800</option>
-          </select></div>
-        <div class="tool-group"><label>Align</label><select id="textAlign">
-            <option value="left">Left</option>
-            <option value="center" selected>Center</option>
-            <option value="right">Right</option>
-          </select></div>
-        <div class="tool-group"><label>X</label><input id="textX" type="number" min="0" max="540" step="1"></div>
-        <div class="tool-group"><label>Y</label><input id="textY" type="number" min="0" max="960" step="1"></div>
-      </div>
+      html.mcp-inline .inline-hint {
+        display: block;
+      }
 
-      <div class="controls">
-        <div class="buttons">
-          <button id="fullscreen">⛶ Fullscreen</button><button id="prev">◀ Màn trước</button><button id="play"
-            class="primary">▶ Preview</button><button id="next">Màn sau ▶</button><button id="reset">↺
-            Reset</button><button id="webm">Download WebM</button><button id="mp4" class="export">Download MP4</button>
+      html.mcp-inline .text-tools,
+      html.mcp-inline .audio,
+      html.mcp-inline .legend,
+      html.mcp-inline .scrub {
+        display: none;
+      }
+
+      html.mcp-inline #webm,
+      html.mcp-inline #mp4,
+      html.mcp-inline #reset {
+        display: none;
+      }
+
+      html.mcp-inline .controls {
+        width: 100%;
+      }
+
+      html.mcp-inline .buttons {
+        gap: 6px;
+      }
+
+      html.mcp-inline button {
+        padding: 7px 9px;
+        font-size: 11px;
+      }
+
+      html.mcp-inline .ai-panel textarea {
+        min-height: 84px;
+      }
+
+      html.mcp-inline .ai-context {
+        max-height: 112px;
+        overflow: auto;
+      }
+
+      html.mcp-inline .status {
+        font-size: 10px;
+      }
+
+      html.mcp-fullscreen body {
+        min-height: 100vh;
+        overflow: auto;
+      }
+
+      html.mcp-fullscreen .inline-hint {
+        display: none;
+      }
+
+      @media (max-width: 720px) {
+        html.mcp-inline .app {
+          grid-template-columns: 1fr;
+          grid-template-areas: "right" "ai";
+        }
+
+        html.mcp-inline .canvas-wrap {
+          width: min(58vw, 235px);
+        }
+
+        html.mcp-inline .ai-panel {
+          max-height: 300px;
+        }
+      }
+      .studio-shell {
+        background: #080b12;
+        color: var(--white);
+      }
+      .studio-top {
+        height: 68px;
+        padding: 0 28px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #0b0f18;
+        position: sticky;
+        top: 0;
+        z-index: 30;
+      }
+      .studio-brand {
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+      .studio-brand span {
+        color: var(--cyan);
+      }
+      .studio-view {
+        padding: 42px max(24px, 6vw);
+        animation: viewIn 0.32s ease both;
+      }
+      .studio-view[hidden],
+      .app[hidden] {
+        display: none !important;
+      }
+      @keyframes viewIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .view-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 24px;
+        margin-bottom: 8px;
+      }
+      .view-head h2 {
+        font-size: clamp(28px, 4vw, 54px);
+        letter-spacing: -0.05em;
+        margin: 0;
+      }
+      .view-head p {
+        color: var(--muted);
+        max-width: 520px;
+        line-height: 1.7;
+        margin: 8px 0 0;
+      }
+      .project-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 130px 120px 32px;
+        gap: 18px;
+        align-items: center;
+        padding: 22px 4px;
+        border-bottom: 1px solid var(--line);
+        cursor: pointer;
+        transition: 0.2s ease;
+      }
+      .project-row:hover {
+        padding-left: 14px;
+        background: #ffffff05;
+      }
+      .project-row h3 {
+        margin: 0 0 6px;
+        font-size: 17px;
+      }
+      .project-meta,
+      .project-state {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .project-state {
+        color: var(--green);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .arrow {
+        font-size: 24px;
+        color: var(--cyan);
+      }
+      .studio-btn {
+        border: 1px solid #344158;
+        background: #111827;
+        color: var(--white);
+        border-radius: 10px;
+        padding: 11px 16px;
+        font: 600 12px inherit;
+        cursor: pointer;
+      }
+      .studio-btn.primary {
+        background: var(--cyan);
+        border-color: var(--cyan);
+        color: #041016;
+      }
+      .create-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 300px;
+        gap: 48px;
+        max-width: 1180px;
+      }
+      .field {
+        margin: 0 0 22px;
+      }
+      .field label {
+        display: block;
+        margin-bottom: 9px;
+        font-size: 12px;
+      }
+      .field input,
+      .field textarea {
+        width: 100%;
+        border: 1px solid #2b3548;
+        background: #0c111c;
+        color: #fff;
+        border-radius: 12px;
+        padding: 14px;
+        font: inherit;
+        outline: none;
+      }
+      .field textarea {
+        min-height: 360px;
+        resize: vertical;
+        line-height: 1.7;
+      }
+      .field input:focus,
+      .field textarea:focus {
+        border-color: var(--cyan);
+      }
+      .steps {
+        border-left: 1px solid var(--line);
+        padding-left: 26px;
+      }
+      .step {
+        padding: 0 0 28px;
+        color: #657086;
+      }
+      .step strong {
+        display: block;
+        color: #aab4c8;
+        margin-bottom: 6px;
+      }
+      .step.active strong {
+        color: var(--cyan);
+      }
+      .plan-list {
+        max-width: 1000px;
+      }
+      .plan-item {
+        display: grid;
+        grid-template-columns: 54px 180px minmax(0, 1fr) 80px;
+        gap: 18px;
+        padding: 20px 0;
+        border-bottom: 1px solid var(--line);
+        align-items: start;
+      }
+      .plan-no {
+        font: 700 12px inherit;
+        color: var(--cyan);
+      }
+      .plan-item input,
+      .plan-item textarea {
+        width: 100%;
+        background: transparent;
+        color: #fff;
+        border: 0;
+        border-bottom: 1px solid #313b4d;
+        padding: 5px 2px;
+        font: inherit;
+        resize: vertical;
+      }
+      .plan-item textarea {
+        min-height: 72px;
+        line-height: 1.55;
+      }
+      .plan-purpose {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 8px;
+      }
+      .plan-actions {
+        position: sticky;
+        bottom: 0;
+        background: #080b12e8;
+        backdrop-filter: blur(12px);
+        padding: 18px 0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+      .workflow-card {
+        border: 1px solid #273044;
+        background: #0b111b;
+        border-radius: 18px;
+        padding: 18px 20px;
+        margin: 0 0 26px;
+        line-height: 1.7;
+      }
+      .workflow-card strong {
+        display: block;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        margin-bottom: 8px;
+      }
+      .workflow-card p {
+        margin: 0;
+        color: #dbe5f5;
+      }
+      .workflow-card.pending {
+        border-color: #35506a;
+        background: #09111d;
+      }
+      .workflow-card.ready {
+        border-color: #30523f;
+        background: #0b1712;
+      }
+      .workflow-card.warn {
+        border-color: #6a5635;
+        background: #171108;
+      }
+      .field-note {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: -10px;
+        margin-bottom: 16px;
+      }
+      .style-box {
+        border: 1px solid #283245;
+        background: #0a0f18;
+        border-radius: 14px;
+        padding: 14px 16px;
+        font-size: 12px;
+        color: #d4dceb;
+        line-height: 1.7;
+        margin-bottom: 22px;
+      }
+      .style-box b {
+        color: var(--cyan);
+      }
+      .editor-nav {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .editor-nav-title {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      @media (max-width: 760px) {
+        .studio-view {
+          padding: 28px 18px;
+        }
+        .view-head,
+        .create-layout {
+          display: block;
+        }
+        .view-head .studio-btn {
+          margin-top: 18px;
+        }
+        .steps {
+          display: none;
+        }
+        .project-row {
+          grid-template-columns: 1fr 28px;
+        }
+        .project-row > :nth-child(2),
+        .project-row > :nth-child(3) {
+          display: none;
+        }
+        .plan-item {
+          grid-template-columns: 34px 1fr;
+        }
+        .plan-item > :nth-child(3),
+        .plan-item > :nth-child(4) {
+          grid-column: 2;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="studio-shell" id="studioShell">
+      <header class="studio-top">
+        <div class="studio-brand">FRAME<span>AI</span></div>
+        <div class="editor-nav">
+          <span class="editor-nav-title" id="currentProjectTitle"></span
+          ><button class="studio-btn" id="backProjects">← Projects</button>
         </div>
-        <div class="scrub"><span id="now">00:00</span><input id="seek" type="range" min="0" max="64" step="0.01"
-            value="0"><span id="total">01:04</span></div>
-      </div>
-      <div class="audio">
-        <div><b>Voice-over (tùy chọn)</b><br>Upload MP3/WAV. Khi export, audio sẽ được trộn vào video.</div><input
-          id="audioFile" type="file" accept="audio/*">
-      </div>
-      <div class="status" id="status">Sẵn sàng.</div>
-      <div class="legend">MP4 dùng ffmpeg.wasm nên lần đầu cần Internet. Nếu bị chặn trong iframe ChatGPT, mở
-        <b>/editor</b> trên server để export.</div>
-    </section>
-    <section class="ai-panel">
-      <div class="ai-title">
-        <h2>AI cho màn hiện tại</h2><span class="ai-badge">ChatGPT</span>
-      </div>
-      <div class="ai-context" id="aiContext">Chọn một màn để ChatGPT hiểu context.</div>
-      <textarea id="aiPrompt"
-        placeholder="Ví dụ: Làm hook màn này mạnh hơn, ít chữ hơn, giữ đúng ý và tối ưu để đọc trong 2 giây."></textarea>
-      <div class="chips">
-        <button class="chip"
-          data-prompt="Rút gọn chữ màn này còn tối đa 2 dòng, vẫn giữ đủ ý và dễ đọc trong video ngắn.">Rút gọn</button>
-        <button class="chip"
-          data-prompt="Viết lại màn này với hook mạnh hơn, tự nhiên bằng tiếng Việt, không clickbait quá mức.">Hook
-          mạnh</button>
-        <button class="chip"
-          data-prompt="Tối ưu bố cục chữ của màn này: font size, vị trí và độ nhấn để dễ đọc trên TikTok/Reels.">Tối ưu
-          layout</button>
-        <button class="chip"
-          data-prompt="Sửa màn này theo phong cách tech/educational hiện đại, ít chữ, keyword rõ và vẫn đúng nội dung gốc.">Tech
-          style</button>
-      </div>
-      <div class="ai-actions"><button id="sendAi" class="primary">✨ Nhờ ChatGPT sửa màn này</button><button
-          id="copyAi">Copy</button></div>
-      <div class="host-actions"><button id="pullLatest">↓ Lấy bản AI mới</button><button id="askWhole">AI review toàn
-          video</button></div>
-      <div class="server-state" id="serverState"><span class="sync-dot off"></span>Chưa kết nối ChatGPT host.</div>
-      <div class="ai-note">Không dùng API key. Sau khi gửi prompt, editor sẽ tự kiểm tra project mới từ MCP trong khoảng
-        30 giây. Nếu UI chưa đổi, bấm “Lấy bản AI mới”.</div>
-    </section>
-  </div>
-  <script>
-    const SAMPLE_PROJECT_ID = 'social-algorithm-short';
-    const mk = (id, text, x, y, size, color = '#f7f9ff', weight = 800, align = 'center', maxWidth = 460) => ({ id, text, x, y, size, color, weight, align, maxWidth });
-    const baseScenes = [
-      { title: 'HOOK', duration: 4, type: 'hook', layers: [mk('hook1', 'THUẬT TOÁN MẠNG XÃ HỘI', 270, 315, 48), mk('hook2', 'HOẠT ĐỘNG RA SAO?', 270, 385, 52, '#64e7ff'), mk('hook3', 'Không phải “hack”. Là cách phân phối nội dung.', 270, 640, 20, '#8f9bb3', 500)] },
-      { title: 'FIRST TEST', duration: 10, type: 'first', layers: [mk('f1', 'KHI BẠN ĐĂNG VIDEO…', 270, 175, 37), mk('f2', '200', 270, 430, 150, '#ffd54a'), mk('f3', 'FIRST TEST', 270, 548, 19, '#ffd54a', 700), mk('f4', 'phần lớn có thể là', 270, 650, 31), mk('f5', 'NON-FOLLOWERS', 270, 705, 39, '#64e7ff'), mk('f6', '* Mô hình minh họa theo video gốc', 270, 850, 15, '#7b8498', 500)] },
-      { title: 'SIGNALS', duration: 8, type: 'signals', layers: [mk('s1', 'THUẬT TOÁN', 270, 160, 44), mk('s2', 'QUAN SÁT TÍN HIỆU', 270, 218, 44, '#67f5a5'), mk('s3', 'WATCH TIME', 145, 380, 24, '#67f5a5', 700, 'left'), mk('s4', 'LIKE', 145, 485, 24, '#f7f9ff', 700, 'left'), mk('s5', 'COMMENT', 145, 590, 24, '#f7f9ff', 700, 'left'), mk('s6', 'SHARE', 145, 695, 24, '#f7f9ff', 700, 'left')] },
-      { title: 'SCALE UP', duration: 10, type: 'ladder', layers: [mk('l1', 'KẾT QUẢ TỐT?', 270, 150, 42), mk('l2', 'PHÂN PHỐI MỞ RỘNG', 270, 205, 42, '#64e7ff'), mk('l3', '200', 270, 330, 54, '#64e7ff'), mk('l4', '2K', 270, 450, 54, '#64e7ff'), mk('l5', '20K', 270, 570, 54, '#64e7ff'), mk('l6', '200K', 270, 690, 62, '#ffd54a'), mk('l7', 'Illustrative distribution ladder', 270, 860, 15, '#8f9bb3', 500)] },
-      { title: 'STOP', duration: 8, type: 'stop', layers: [mk('st1', '200 NGƯỜI ĐẦU', 270, 180, 43), mk('st2', 'LƯỚT QUA QUÁ NHANH?', 270, 238, 43, '#ff6b7a'), mk('st3', 'STOP', 270, 490, 48, '#16090d'), mk('st4', 'DISTRIBUTION', 270, 530, 26, '#16090d'), mk('st5', 'LOW ENGAGEMENT', 270, 670, 20, '#9aa4b8', 600)] },
-      { title: 'GOAL', duration: 8, type: 'goal', layers: [mk('g1', 'THUẬT TOÁN MUỐN GÌ?', 270, 160, 42), mk('g2', 'TIME ON PLATFORM', 270, 500, 27), mk('g3', 'GIỮ NGƯỜI DÙNG Ở LẠI', 270, 690, 34), mk('g4', 'CÀNG LÂU CÀNG TỐT', 270, 740, 34, '#ffd54a')] },
-      { title: 'NICHE', duration: 8, type: 'niche', layers: [mk('n1', 'GIÚP THUẬT TOÁN HIỂU', 270, 130, 40), mk('n2', 'BẠN ĐANG NÓI CHO AI', 270, 185, 40, '#64e7ff'), mk('n3', 'HÀI HƯỚC', 120, 448, 13), mk('n4', 'THỂ THAO', 270, 448, 13), mk('n5', 'GIÁO DỤC', 420, 448, 13), mk('n6', '✓ MỘT NICHE RÕ RÀNG', 270, 645, 24, '#052516'), mk('n7', '→ dữ liệu audience sạch hơn', 270, 680, 17, '#052516', 700)] },
-      { title: 'FORMULA', duration: 8, type: 'formula', layers: [mk('fo1', 'NỘI DUNG TỐT =', 270, 120, 40), mk('fo2', 'RELEVANT', 270, 273, 19, '#64e7ff', 700), mk('fo3', 'NON-OBVIOUS', 270, 368, 19, '#ffd54a', 700), mk('fo4', 'EASY', 270, 463, 19, '#67f5a5', 700), mk('fo5', 'ACTIONABLE', 270, 558, 19, '#f7f9ff', 700), mk('fo6', 'ĐÚNG NGƯỜI', 270, 700, 33), mk('fo7', '+', 270, 744, 24, '#8f9bb3'), mk('fo8', 'NỘI DUNG TỐT', 270, 790, 33, '#67f5a5'), mk('fo9', '→ thuật toán có lý do để phân phối tiếp', 270, 850, 19, '#f7f9ff', 700)] }
-    ];
-    baseScenes.forEach((s, i) => s.id = s.id || `scene-${i + 1}`);
-    let scenes = JSON.parse(JSON.stringify(baseScenes));
-    const c = document.getElementById('c'), ctx = c.getContext('2d'), W = c.width, H = c.height, $ = id => document.getElementById(id); let t = 0, playing = false, last = 0, audioEl = null, audioUrl = null, hitBoxes = [], selected = null, editing = false;
-    // ---- MCP Apps host bridge (standard ui/* postMessage + ChatGPT compatibility fallback) ----
-    let hostConnected = false, syncTimer = null, bridgeMode = "standalone";
-    let activeProject = null, routeOnApply = false;
-    let projectVersion = 0, lastMutation = null, aiWatchTimer = null, aiWatchUntil = 0, aiWatchBaseVersion = 0, pulling = false;
-    let pendingSyncTask = null, syncInFlight = Promise.resolve();
-    let hostResizeObserver = null, hostResizeRaf = 0, lastReportedSize = { width: 0, height: 0 }, startupPhase = true, startupTimer = null;
-    let modelContextTimer = null, lastModelContextKey = "";
-    function hostDisplayMode(ctx = {}) { return ctx.displayMode || ctx.presentation?.mode || ctx.mode || "inline" }
-    function applyHostLayout(ctx = {}) {
-      const embedded = mcpBridge?.isEmbedded?.() ?? (window.parent !== window);
-      const mode = hostDisplayMode(ctx);
-      document.documentElement.classList.toggle("mcp-host", embedded);
-      document.documentElement.classList.toggle("mcp-inline", embedded && mode !== "fullscreen");
-      document.documentElement.classList.toggle("mcp-fullscreen", embedded && mode === "fullscreen");
-      requestHostResize();
-    }
-    function requestHostResize() {
-      if (!mcpBridge?.ready) return;
-      cancelAnimationFrame(hostResizeRaf);
-      hostResizeRaf = requestAnimationFrame(() => {
-        const width = Math.ceil(window.innerWidth);
-        const height = Math.ceil(Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, document.body.getBoundingClientRect().height));
-        if (width === lastReportedSize.width && height === lastReportedSize.height) return;
-        lastReportedSize = { width, height };
-        const delay = startupPhase ? 120 : 0;
-        setTimeout(() => { try { mcpBridge.notifySize(width, height) } catch (e) { console.warn("size notification failed", e) } }, delay)
-      });
-    }
-    function setupHostResizeObserver() {
-      if (hostResizeObserver || !mcpBridge?.ready) return;
-      hostResizeObserver = new ResizeObserver(() => requestHostResize());
-      hostResizeObserver.observe(document.documentElement);
-      hostResizeObserver.observe(document.body);
-      requestHostResize();
-    }
-    function host() { return typeof window !== "undefined" ? window.openai : undefined }
-    function setServerState(text, ok = true) { const el = $('serverState'); if (!el) return; el.innerHTML = `<span class="sync-dot ${ok ? '' : 'off'}"></span>${escapeHtml(text)}` }
-    function showStudioView(id) {
-      ['projectsView','createView','planView'].forEach(x => $(x).hidden = x !== id);
-      $('studioShell').hidden = false; $('editorApp').hidden = true; requestHostResize();
-    }
-    function showEditor() { $('studioShell').hidden = false; ['projectsView','createView','planView'].forEach(x => $(x).hidden = true); $('editorApp').hidden = false; requestHostResize(); }
-    function statusLabel(status) { return ({planning:'Đang chờ AI',review:'Chờ xác nhận',ready:'Sẵn sàng edit'})[status] || 'Sẵn sàng edit' }
-    function escapeAttr(v) { return escapeHtml(v).replace(/'/g, '&#39;') }
-    function stylePrompt(project = activeProject) { return String(project?.workflow?.styleEdit?.prompt || '').trim() }
-    function isSampleProject(project = activeProject) { return (project?.id || '') === SAMPLE_PROJECT_ID }
-    function hasScenes() { return Array.isArray(scenes) && scenes.length > 0 }
-    function updateWorkflowCard(kind, title, body) {
-      const card = $('workflowCard');
-      if (!card) return;
-      card.className = `workflow-card ${kind || 'pending'}`;
-      card.innerHTML = `<strong>${escapeHtml(title)}</strong><p>${escapeHtml(body)}</p>`;
-    }
-    async function getProjectList() {
-      const mode = await ensureHost();
-      if (mode) { const r = await callHostTool('list_video_projects', {}); return r?.structuredContent || r || {}; }
-      const r = await fetch('/api/projects'); return r.json();
-    }
-    async function renderProjectList() {
-      showStudioView('projectsView');
-      try {
-        const data = await getProjectList(), rows = data.projects || [];
-        $('projectRows').innerHTML = rows.map(p => `<div class="project-row" data-project="${escapeAttr(p.id)}"><div><h3>${escapeHtml(p.title)}${p.id === data.activeProjectId ? ' <span class="project-meta">(active)</span>' : ''}</h3><div class="project-meta">${p.sceneCount} màn · JSON v${p.version}</div></div><div class="project-state">${escapeHtml(statusLabel(p.status))}</div><div class="project-meta">${p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('vi-VN') : ''}</div><div class="arrow">→</div></div>`).join('') || '<div class="project-meta" style="padding:32px 0">Chưa có project.</div>';
-        document.querySelectorAll('[data-project]').forEach(el => el.onclick = () => openStoredProject(el.dataset.project));
-      } catch (e) { $('projectRows').innerHTML = `<div class="project-meta" style="padding:32px 0">Không tải được project: ${e.message}</div>`; }
-    }
-    async function openStoredProject(id) {
-      routeOnApply = true;
-      const mode = await ensureHost();
-      if (mode) await callHostTool('select_video_project', { project_id:id });
-      else { const r = await fetch('/api/projects/' + encodeURIComponent(id)); const data = await r.json(); if (data.project) applyProject(data.project); }
-    }
-    function renderPlan(project) {
-      activeProject = project; $('currentProjectTitle').textContent = project.title;
-      const plan = project.workflow?.contentPlan || [];
-      if (!plan.length) {
-        $('planList').innerHTML = '<div class="project-meta" style="padding:12px 0 24px">Chưa có đề xuất màn nào. Hãy chờ ChatGPT phân tích kịch bản và lưu `content_plan` vào project.</div>';
-        updateWorkflowCard('pending', 'Đang chờ AI phân tích kịch bản', 'Khi ChatGPT gọi xong set_project_content_plan, danh sách các màn sẽ hiện ở đây để bạn chỉnh và xác nhận.');
-      } else {
-        $('planList').innerHTML = plan.map((item,i) => `<div class="plan-item" data-plan="${i}"><div class="plan-no">${String(i+1).padStart(2,'0')}</div><div><input data-key="title" value="${escapeAttr(item.title || '')}"><div class="plan-purpose">${escapeHtml(item.purpose || 'Màn nội dung')}</div></div><textarea data-key="content">${escapeHtml(item.content || '')}</textarea><div><input data-key="duration" type="number" min="1" max="30" value="${item.duration || 4}"><div class="plan-purpose">giây</div></div></div>`).join('');
-        updateWorkflowCard('ready', 'Đã có content plan', 'Bạn có thể sửa title, nội dung, thời lượng từng màn. Khi bấm xác nhận, ChatGPT mới tạo khung edit cuối cùng và ghi vào JSON project.');
+      </header>
+      <main class="studio-view" id="projectsView">
+        <div class="view-head">
+          <div>
+            <h2>Projects</h2>
+            <p>
+              Mỗi project là một file JSON độc lập, sẵn sàng để tiếp tục từ đúng
+              trạng thái gần nhất.
+            </p>
+          </div>
+          <button class="studio-btn primary" id="newProject">
+            + Tạo project
+          </button>
+        </div>
+        <div id="projectRows"></div>
+      </main>
+      <main class="studio-view" id="createView" hidden>
+        <div class="view-head">
+          <div>
+            <h2>Project mới</h2>
+            <p>
+              Đưa kịch bản thô vào đây. AI sẽ chia nội dung thành các màn để bạn
+              duyệt trước khi dựng khung edit.
+            </p>
+          </div>
+        </div>
+        <div class="create-layout">
+          <div>
+            <div class="field">
+              <label>Tên project</label
+              ><input
+                id="projectTitle"
+                placeholder="Ví dụ: 5 cách xây kênh cá nhân"
+              />
+            </div>
+            <div class="field">
+              <label>Link YouTube nguồn (tuỳ chọn)</label
+              ><input
+                id="projectSourceUrl"
+                placeholder="https://www.youtube.com/watch?v=..."
+              />
+            </div>
+            <div class="field">
+              <label>Kịch bản / note nguồn</label
+              ><textarea
+                id="projectScript"
+                placeholder="Dán toàn bộ kịch bản video, transcript, note phân tích..."
+              ></textarea>
+              <div class="field-note" id="scriptNote">
+                Nhập script hoặc ít nhất dán link nguồn. ChatGPT sẽ phân tích
+                theo style edit riêng trước khi dựng layout.
+              </div>
+            </div>
+            <div class="style-box">
+              <b>Style edit đang áp dụng</b><br />HOOK → GIẢI THÍCH → VISUAL →
+              INSIGHT → KẾT LUẬN · 60–90s · ưu tiên voice ngắn, visual đổi 2–4
+              giây/lần, subtitle ngắn và motion graphic cho flow/số liệu.
+            </div>
+            <button class="studio-btn primary" id="analyzeScript">
+              Phân tích kịch bản với ChatGPT →
+            </button>
+          </div>
+          <aside class="steps">
+            <div class="step active">
+              <strong>01 · Kịch bản</strong>Nguồn nội dung gốc
+            </div>
+            <div class="step">
+              <strong>02 · Nội dung các màn</strong>AI đề xuất, bạn chỉnh sửa
+            </div>
+            <div class="step">
+              <strong>03 · Khung edit</strong>AI tạo layout và layers
+            </div>
+          </aside>
+        </div>
+      </main>
+      <main class="studio-view" id="planView" hidden>
+        <div class="view-head">
+          <div>
+            <h2>Duyệt nội dung</h2>
+            <p>
+              Chỉnh trực tiếp tiêu đề, nội dung và thời lượng. Khi xác nhận,
+              ChatGPT mới bắt đầu tạo khung edit.
+            </p>
+          </div>
+        </div>
+        <div class="workflow-card pending" id="workflowCard">
+          <strong>Đang chờ AI</strong>
+          <p>
+            Project vừa tạo. ChatGPT sẽ đọc kịch bản hoặc link nguồn, áp dụng
+            style edit riêng và lưu đề xuất nội dung cho từng màn vào JSON này.
+          </p>
+        </div>
+        <div class="plan-list" id="planList"></div>
+        <div class="plan-actions">
+          <button class="studio-btn" id="savePlan">Lưu nháp</button
+          ><button class="studio-btn primary" id="confirmPlan">
+            Xác nhận & tạo khung edit →
+          </button>
+        </div>
+      </main>
+    </div>
+    <div class="app" id="editorApp" hidden>
+      <section class="left">
+        <h1>Social Algorithm — AI Video Editor</h1>
+        <div class="sub">
+          Video dọc 9:16 • sửa chữ trực tiếp • đồng bộ scene với ChatGPT qua
+          MCP.
+        </div>
+        <div class="tip">
+          <b>Cách sửa chữ:</b> double-click vào dòng chữ trên khung video → gõ
+          trực tiếp → Ctrl/Cmd + Enter hoặc click ra ngoài để lưu. Click 1 lần
+          để chọn text rồi chỉnh size/weight/căn lề/X/Y.
+        </div>
+        <div id="sceneList"></div>
+      </section>
+      <section class="right">
+        <div class="inline-hint">
+          Đang ở chế độ inline. Editor sẽ thử mở Fullscreen tự động; nếu chưa
+          mở, bấm <b>⛶ Fullscreen</b>.
+        </div>
+        <div class="canvas-wrap" id="canvasWrap">
+          <canvas id="c" width="540" height="960"></canvas>
+          <div class="selection-box" id="selectionBox"></div>
+          <div
+            class="inline-editor"
+            id="inlineEditor"
+            contenteditable="true"
+            spellcheck="false"
+          ></div>
+          <div class="edit-badge"><b>DOUBLE-CLICK</b> để sửa chữ</div>
+        </div>
+
+        <div class="text-tools disabled" id="textTools">
+          <div class="tool-group">
+            <span class="tool-name">Text đang chọn</span
+            ><span class="selected-name" id="selectedName">Chưa chọn</span>
+          </div>
+          <div class="tool-group">
+            <label>Size</label
+            ><input id="fontSize" type="number" min="12" max="120" step="1" />
+          </div>
+          <div class="tool-group">
+            <label>Weight</label
+            ><select id="fontWeight">
+              <option>400</option>
+              <option>500</option>
+              <option>600</option>
+              <option>700</option>
+              <option selected>800</option>
+            </select>
+          </div>
+          <div class="tool-group">
+            <label>Align</label
+            ><select id="textAlign">
+              <option value="left">Left</option>
+              <option value="center" selected>Center</option>
+              <option value="right">Right</option>
+            </select>
+          </div>
+          <div class="tool-group">
+            <label>X</label
+            ><input id="textX" type="number" min="0" max="540" step="1" />
+          </div>
+          <div class="tool-group">
+            <label>Y</label
+            ><input id="textY" type="number" min="0" max="960" step="1" />
+          </div>
+        </div>
+
+        <div class="controls">
+          <div class="buttons">
+            <button id="fullscreen">⛶ Fullscreen</button
+            ><button id="prev">◀ Màn trước</button
+            ><button id="play" class="primary">▶ Preview</button
+            ><button id="next">Màn sau ▶</button
+            ><button id="reset">↺ Reset</button
+            ><button id="webm">Download WebM</button
+            ><button id="mp4" class="export">Download MP4</button>
+          </div>
+          <div class="scrub">
+            <span id="now">00:00</span
+            ><input
+              id="seek"
+              type="range"
+              min="0"
+              max="64"
+              step="0.01"
+              value="0"
+            /><span id="total">01:04</span>
+          </div>
+        </div>
+        <div class="audio">
+          <div>
+            <b>Voice-over (tùy chọn)</b><br />Upload MP3/WAV. Khi export, audio
+            sẽ được trộn vào video.
+          </div>
+          <input id="audioFile" type="file" accept="audio/*" />
+        </div>
+        <div class="status" id="status">Sẵn sàng.</div>
+        <div class="legend">
+          MP4 dùng ffmpeg.wasm nên lần đầu cần Internet. Nếu bị chặn trong
+          iframe ChatGPT, mở <b>/editor</b> trên server để export.
+        </div>
+      </section>
+      <section class="ai-panel">
+        <div class="ai-title">
+          <h2>AI cho màn hiện tại</h2>
+          <span class="ai-badge">ChatGPT</span>
+        </div>
+        <div class="ai-context" id="aiContext">
+          Chọn một màn để ChatGPT hiểu context.
+        </div>
+        <textarea
+          id="aiPrompt"
+          placeholder="Ví dụ: Làm hook màn này mạnh hơn, ít chữ hơn, giữ đúng ý và tối ưu để đọc trong 2 giây."
+        ></textarea>
+        <div class="chips">
+          <button
+            class="chip"
+            data-prompt="Rút gọn chữ màn này còn tối đa 2 dòng, vẫn giữ đủ ý và dễ đọc trong video ngắn."
+          >
+            Rút gọn
+          </button>
+          <button
+            class="chip"
+            data-prompt="Viết lại màn này với hook mạnh hơn, tự nhiên bằng tiếng Việt, không clickbait quá mức."
+          >
+            Hook mạnh
+          </button>
+          <button
+            class="chip"
+            data-prompt="Tối ưu bố cục chữ của màn này: font size, vị trí và độ nhấn để dễ đọc trên TikTok/Reels."
+          >
+            Tối ưu layout
+          </button>
+          <button
+            class="chip"
+            data-prompt="Sửa màn này theo phong cách tech/educational hiện đại, ít chữ, keyword rõ và vẫn đúng nội dung gốc."
+          >
+            Tech style
+          </button>
+        </div>
+        <div class="ai-actions">
+          <button id="sendAi" class="primary">✨ Nhờ ChatGPT sửa màn này</button
+          ><button id="copyAi">Copy</button>
+        </div>
+        <div class="host-actions">
+          <button id="pullLatest">↓ Lấy bản AI mới</button
+          ><button id="askWhole">AI review toàn video</button>
+        </div>
+        <div class="server-state" id="serverState">
+          <span class="sync-dot off"></span>Chưa kết nối ChatGPT host.
+        </div>
+        <div class="ai-note">
+          Không dùng API key. Sau khi gửi prompt, editor sẽ tự kiểm tra project
+          mới từ MCP trong khoảng 30 giây. Nếu UI chưa đổi, bấm “Lấy bản AI
+          mới”.
+        </div>
+      </section>
+    </div>
+    <script>
+      const SAMPLE_PROJECT_ID = "social-algorithm-short";
+      const mk = (
+        id,
+        text,
+        x,
+        y,
+        size,
+        color = "#f7f9ff",
+        weight = 800,
+        align = "center",
+        maxWidth = 460,
+      ) => ({ id, text, x, y, size, color, weight, align, maxWidth });
+      const baseScenes = [
+        {
+          title: "HOOK",
+          duration: 4,
+          type: "hook",
+          layers: [
+            mk("hook1", "THUẬT TOÁN MẠNG XÃ HỘI", 270, 315, 48),
+            mk("hook2", "HOẠT ĐỘNG RA SAO?", 270, 385, 52, "#64e7ff"),
+            mk(
+              "hook3",
+              "Không phải “hack”. Là cách phân phối nội dung.",
+              270,
+              640,
+              20,
+              "#8f9bb3",
+              500,
+            ),
+          ],
+        },
+        {
+          title: "FIRST TEST",
+          duration: 10,
+          type: "first",
+          layers: [
+            mk("f1", "KHI BẠN ĐĂNG VIDEO…", 270, 175, 37),
+            mk("f2", "200", 270, 430, 150, "#ffd54a"),
+            mk("f3", "FIRST TEST", 270, 548, 19, "#ffd54a", 700),
+            mk("f4", "phần lớn có thể là", 270, 650, 31),
+            mk("f5", "NON-FOLLOWERS", 270, 705, 39, "#64e7ff"),
+            mk(
+              "f6",
+              "* Mô hình minh họa theo video gốc",
+              270,
+              850,
+              15,
+              "#7b8498",
+              500,
+            ),
+          ],
+        },
+        {
+          title: "SIGNALS",
+          duration: 8,
+          type: "signals",
+          layers: [
+            mk("s1", "THUẬT TOÁN", 270, 160, 44),
+            mk("s2", "QUAN SÁT TÍN HIỆU", 270, 218, 44, "#67f5a5"),
+            mk("s3", "WATCH TIME", 145, 380, 24, "#67f5a5", 700, "left"),
+            mk("s4", "LIKE", 145, 485, 24, "#f7f9ff", 700, "left"),
+            mk("s5", "COMMENT", 145, 590, 24, "#f7f9ff", 700, "left"),
+            mk("s6", "SHARE", 145, 695, 24, "#f7f9ff", 700, "left"),
+          ],
+        },
+        {
+          title: "SCALE UP",
+          duration: 10,
+          type: "ladder",
+          layers: [
+            mk("l1", "KẾT QUẢ TỐT?", 270, 150, 42),
+            mk("l2", "PHÂN PHỐI MỞ RỘNG", 270, 205, 42, "#64e7ff"),
+            mk("l3", "200", 270, 330, 54, "#64e7ff"),
+            mk("l4", "2K", 270, 450, 54, "#64e7ff"),
+            mk("l5", "20K", 270, 570, 54, "#64e7ff"),
+            mk("l6", "200K", 270, 690, 62, "#ffd54a"),
+            mk(
+              "l7",
+              "Illustrative distribution ladder",
+              270,
+              860,
+              15,
+              "#8f9bb3",
+              500,
+            ),
+          ],
+        },
+        {
+          title: "STOP",
+          duration: 8,
+          type: "stop",
+          layers: [
+            mk("st1", "200 NGƯỜI ĐẦU", 270, 180, 43),
+            mk("st2", "LƯỚT QUA QUÁ NHANH?", 270, 238, 43, "#ff6b7a"),
+            mk("st3", "STOP", 270, 490, 48, "#16090d"),
+            mk("st4", "DISTRIBUTION", 270, 530, 26, "#16090d"),
+            mk("st5", "LOW ENGAGEMENT", 270, 670, 20, "#9aa4b8", 600),
+          ],
+        },
+        {
+          title: "GOAL",
+          duration: 8,
+          type: "goal",
+          layers: [
+            mk("g1", "THUẬT TOÁN MUỐN GÌ?", 270, 160, 42),
+            mk("g2", "TIME ON PLATFORM", 270, 500, 27),
+            mk("g3", "GIỮ NGƯỜI DÙNG Ở LẠI", 270, 690, 34),
+            mk("g4", "CÀNG LÂU CÀNG TỐT", 270, 740, 34, "#ffd54a"),
+          ],
+        },
+        {
+          title: "NICHE",
+          duration: 8,
+          type: "niche",
+          layers: [
+            mk("n1", "GIÚP THUẬT TOÁN HIỂU", 270, 130, 40),
+            mk("n2", "BẠN ĐANG NÓI CHO AI", 270, 185, 40, "#64e7ff"),
+            mk("n3", "HÀI HƯỚC", 120, 448, 13),
+            mk("n4", "THỂ THAO", 270, 448, 13),
+            mk("n5", "GIÁO DỤC", 420, 448, 13),
+            mk("n6", "✓ MỘT NICHE RÕ RÀNG", 270, 645, 24, "#052516"),
+            mk(
+              "n7",
+              "→ dữ liệu audience sạch hơn",
+              270,
+              680,
+              17,
+              "#052516",
+              700,
+            ),
+          ],
+        },
+        {
+          title: "FORMULA",
+          duration: 8,
+          type: "formula",
+          layers: [
+            mk("fo1", "NỘI DUNG TỐT =", 270, 120, 40),
+            mk("fo2", "RELEVANT", 270, 273, 19, "#64e7ff", 700),
+            mk("fo3", "NON-OBVIOUS", 270, 368, 19, "#ffd54a", 700),
+            mk("fo4", "EASY", 270, 463, 19, "#67f5a5", 700),
+            mk("fo5", "ACTIONABLE", 270, 558, 19, "#f7f9ff", 700),
+            mk("fo6", "ĐÚNG NGƯỜI", 270, 700, 33),
+            mk("fo7", "+", 270, 744, 24, "#8f9bb3"),
+            mk("fo8", "NỘI DUNG TỐT", 270, 790, 33, "#67f5a5"),
+            mk(
+              "fo9",
+              "→ thuật toán có lý do để phân phối tiếp",
+              270,
+              850,
+              19,
+              "#f7f9ff",
+              700,
+            ),
+          ],
+        },
+      ];
+      baseScenes.forEach((s, i) => (s.id = s.id || `scene-${i + 1}`));
+      let scenes = JSON.parse(JSON.stringify(baseScenes));
+      const c = document.getElementById("c"),
+        ctx = c.getContext("2d"),
+        W = c.width,
+        H = c.height,
+        $ = (id) => document.getElementById(id);
+      let t = 0,
+        playing = false,
+        last = 0,
+        audioEl = null,
+        audioUrl = null,
+        hitBoxes = [],
+        selected = null,
+        editing = false;
+      // ---- MCP Apps host bridge (standard ui/* postMessage + ChatGPT compatibility fallback) ----
+      let hostConnected = false,
+        syncTimer = null,
+        bridgeMode = "standalone";
+      let activeProject = null,
+        routeOnApply = false;
+      let projectVersion = 0,
+        lastMutation = null,
+        aiWatchTimer = null,
+        aiWatchUntil = 0,
+        aiWatchBaseVersion = 0,
+        pulling = false;
+      let pendingSyncTask = null,
+        syncInFlight = Promise.resolve();
+      let hostResizeObserver = null,
+        hostResizeRaf = 0,
+        lastReportedSize = { width: 0, height: 0 },
+        startupPhase = true,
+        startupTimer = null;
+      let modelContextTimer = null,
+        lastModelContextKey = "";
+      function hostDisplayMode(ctx = {}) {
+        return (
+          ctx.displayMode || ctx.presentation?.mode || ctx.mode || "inline"
+        );
       }
-      showStudioView('planView');
-    }
-    function collectPlan() { return [...document.querySelectorAll('[data-plan]')].map((row,i) => { const old = activeProject.workflow.contentPlan[i]; return { ...old, id:old.id || `scene-${i+1}`, title:row.querySelector('[data-key=title]').value.trim(), content:row.querySelector('[data-key=content]').value.trim(), duration:+row.querySelector('[data-key=duration]').value || 4 }; }); }
-    async function persistPlan() {
-      activeProject.workflow.contentPlan = collectPlan();
-      activeProject.workflow.status = activeProject.workflow.contentPlan.length ? 'review' : (activeProject.workflow.status || 'planning');
-      const mode = await ensureHost();
-      if (mode) await callHostTool('set_project_content_plan', { project_id:activeProject.id, content_plan:activeProject.workflow.contentPlan });
-      else { const r = await fetch('/api/projects/'+encodeURIComponent(activeProject.id), {method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({project:activeProject})}); const d=await r.json(); if(d.project) activeProject=d.project; }
-    }
-    async function createProjectFlow() {
-      const title=$('projectTitle').value.trim(), script=$('projectScript').value.trim(), sourceUrl=$('projectSourceUrl').value.trim();
-      if(!title || (!sourceUrl && script.length<20)) { alert('Vui lòng nhập tên project và ít nhất một trong hai: link nguồn hoặc kịch bản tối thiểu 20 ký tự.'); return; }
-      $('analyzeScript').disabled=true; $('analyzeScript').textContent='Đang tạo project…'; routeOnApply=true;
-      const mode=await ensureHost(); let project;
-      if(mode){ const r=await callHostTool('create_video_project',{title,script,source_url:sourceUrl}); project=r?.structuredContent?.project; }
-      else { const r=await fetch('/api/projects',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({title,script,source_url:sourceUrl})}); project=(await r.json()).project; }
-      if(project){
-        activeProject=project;
-        renderPlan(project);
-        const prompt=`Use only the Video Editor app tools.
+      function applyHostLayout(ctx = {}) {
+        const embedded = mcpBridge?.isEmbedded?.() ?? window.parent !== window;
+        const mode = hostDisplayMode(ctx);
+        document.documentElement.classList.toggle("mcp-host", embedded);
+        document.documentElement.classList.toggle(
+          "mcp-inline",
+          embedded && mode !== "fullscreen",
+        );
+        document.documentElement.classList.toggle(
+          "mcp-fullscreen",
+          embedded && mode === "fullscreen",
+        );
+        requestHostResize();
+      }
+      function requestHostResize() {
+        if (!mcpBridge?.ready) return;
+        cancelAnimationFrame(hostResizeRaf);
+        hostResizeRaf = requestAnimationFrame(() => {
+          const width = Math.ceil(window.innerWidth);
+          const height = Math.ceil(
+            Math.max(
+              document.body.scrollHeight,
+              document.documentElement.scrollHeight,
+              document.body.getBoundingClientRect().height,
+            ),
+          );
+          if (
+            width === lastReportedSize.width &&
+            height === lastReportedSize.height
+          )
+            return;
+          lastReportedSize = { width, height };
+          const delay = startupPhase ? 120 : 0;
+          setTimeout(() => {
+            try {
+              mcpBridge.notifySize(width, height);
+            } catch (e) {
+              console.warn("size notification failed", e);
+            }
+          }, delay);
+        });
+      }
+      function setupHostResizeObserver() {
+        if (hostResizeObserver || !mcpBridge?.ready) return;
+        hostResizeObserver = new ResizeObserver(() => requestHostResize());
+        hostResizeObserver.observe(document.documentElement);
+        hostResizeObserver.observe(document.body);
+        requestHostResize();
+      }
+      function host() {
+        return typeof window !== "undefined" ? window.openai : undefined;
+      }
+      function setServerState(text, ok = true) {
+        const el = $("serverState");
+        if (!el) return;
+        el.innerHTML = `<span class="sync-dot ${ok ? "" : "off"}"></span>${escapeHtml(text)}`;
+      }
+      function showStudioView(id) {
+        ["projectsView", "createView", "planView"].forEach(
+          (x) => ($(x).hidden = x !== id),
+        );
+        $("studioShell").hidden = false;
+        $("editorApp").hidden = true;
+        requestHostResize();
+      }
+      function showEditor() {
+        $("studioShell").hidden = false;
+        ["projectsView", "createView", "planView"].forEach(
+          (x) => ($(x).hidden = true),
+        );
+        $("editorApp").hidden = false;
+        requestHostResize();
+      }
+      function statusLabel(status) {
+        return (
+          {
+            planning: "Đang chờ AI",
+            review: "Chờ xác nhận",
+            ready: "Sẵn sàng edit",
+          }[status] || "Sẵn sàng edit"
+        );
+      }
+      function escapeAttr(v) {
+        return escapeHtml(v).replace(/'/g, "&#39;");
+      }
+      function stylePrompt(project = activeProject) {
+        return String(project?.workflow?.styleEdit?.prompt || "").trim();
+      }
+      function isSampleProject(project = activeProject) {
+        return (project?.id || "") === SAMPLE_PROJECT_ID;
+      }
+      function hasScenes() {
+        return Array.isArray(scenes) && scenes.length > 0;
+      }
+      function updateWorkflowCard(kind, title, body) {
+        const card = $("workflowCard");
+        if (!card) return;
+        card.className = `workflow-card ${kind || "pending"}`;
+        card.innerHTML = `<strong>${escapeHtml(title)}</strong><p>${escapeHtml(body)}</p>`;
+      }
+      async function getProjectList() {
+        const mode = await ensureHost();
+        if (mode) {
+          const r = await callHostTool("list_video_projects", {});
+          return r?.structuredContent || r || {};
+        }
+        const r = await fetch("/api/projects");
+        return r.json();
+      }
+      async function renderProjectList() {
+        showStudioView("projectsView");
+        try {
+          const data = await getProjectList(),
+            rows = data.projects || [];
+          $("projectRows").innerHTML =
+            rows
+              .map(
+                (p) =>
+                  `<div class="project-row" data-project="${escapeAttr(p.id)}"><div><h3>${escapeHtml(p.title)}${p.id === data.activeProjectId ? ' <span class="project-meta">(active)</span>' : ""}</h3><div class="project-meta">${p.sceneCount} màn · JSON v${p.version}</div></div><div class="project-state">${escapeHtml(statusLabel(p.status))}</div><div class="project-meta">${p.updatedAt ? new Date(p.updatedAt).toLocaleDateString("vi-VN") : ""}</div><div class="arrow">→</div></div>`,
+              )
+              .join("") ||
+            '<div class="project-meta" style="padding:32px 0">Chưa có project.</div>';
+          document
+            .querySelectorAll("[data-project]")
+            .forEach(
+              (el) =>
+                (el.onclick = () => openStoredProject(el.dataset.project)),
+            );
+        } catch (e) {
+          $("projectRows").innerHTML =
+            `<div class="project-meta" style="padding:32px 0">Không tải được project: ${e.message}</div>`;
+        }
+      }
+      async function openStoredProject(id) {
+        routeOnApply = true;
+        const mode = await ensureHost();
+        if (mode)
+          await callHostTool("select_video_project", { project_id: id });
+        else {
+          const r = await fetch("/api/projects/" + encodeURIComponent(id));
+          const data = await r.json();
+          if (data.project) applyProject(data.project);
+        }
+      }
+      function renderPlan(project) {
+        activeProject = project;
+        $("currentProjectTitle").textContent = project.title;
+        const plan = project.workflow?.contentPlan || [];
+        if (!plan.length) {
+          $("planList").innerHTML =
+            '<div class="project-meta" style="padding:12px 0 24px">Chưa có đề xuất màn nào. Hãy chờ ChatGPT phân tích kịch bản và lưu `content_plan` vào project.</div>';
+          updateWorkflowCard(
+            "pending",
+            "Đang chờ AI phân tích kịch bản",
+            "Khi ChatGPT gọi xong set_project_content_plan, danh sách các màn sẽ hiện ở đây để bạn chỉnh và xác nhận.",
+          );
+        } else {
+          $("planList").innerHTML = plan
+            .map(
+              (item, i) =>
+                `<div class="plan-item" data-plan="${i}"><div class="plan-no">${String(i + 1).padStart(2, "0")}</div><div><input data-key="title" value="${escapeAttr(item.title || "")}"><div class="plan-purpose">${escapeHtml(item.purpose || "Màn nội dung")}</div></div><textarea data-key="content">${escapeHtml(item.content || "")}</textarea><div><input data-key="duration" type="number" min="1" max="30" value="${item.duration || 4}"><div class="plan-purpose">giây</div></div></div>`,
+            )
+            .join("");
+          updateWorkflowCard(
+            "ready",
+            "Đã có content plan",
+            "Bạn có thể sửa title, nội dung, thời lượng từng màn. Khi bấm xác nhận, ChatGPT mới tạo khung edit cuối cùng và ghi vào JSON project.",
+          );
+        }
+        showStudioView("planView");
+      }
+      function collectPlan() {
+        return [...document.querySelectorAll("[data-plan]")].map((row, i) => {
+          const old = activeProject.workflow.contentPlan[i];
+          return {
+            ...old,
+            id: old.id || `scene-${i + 1}`,
+            title: row.querySelector("[data-key=title]").value.trim(),
+            content: row.querySelector("[data-key=content]").value.trim(),
+            duration: +row.querySelector("[data-key=duration]").value || 4,
+          };
+        });
+      }
+      async function persistPlan() {
+        activeProject.workflow.contentPlan = collectPlan();
+        activeProject.workflow.status = activeProject.workflow.contentPlan
+          .length
+          ? "review"
+          : activeProject.workflow.status || "planning";
+        const mode = await ensureHost();
+        if (mode)
+          await callHostTool("set_project_content_plan", {
+            project_id: activeProject.id,
+            content_plan: activeProject.workflow.contentPlan,
+          });
+        else {
+          const r = await fetch(
+            "/api/projects/" + encodeURIComponent(activeProject.id),
+            {
+              method: "PUT",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ project: activeProject }),
+            },
+          );
+          const d = await r.json();
+          if (d.project) activeProject = d.project;
+        }
+      }
+      async function createProjectFlow() {
+        const title = $("projectTitle").value.trim(),
+          script = $("projectScript").value.trim(),
+          sourceUrl = $("projectSourceUrl").value.trim();
+        if (!title || (!sourceUrl && script.length < 20)) {
+          alert(
+            "Vui lòng nhập tên project và ít nhất một trong hai: link nguồn hoặc kịch bản tối thiểu 20 ký tự.",
+          );
+          return;
+        }
+        $("analyzeScript").disabled = true;
+        $("analyzeScript").textContent = "Đang tạo project…";
+        routeOnApply = true;
+        const mode = await ensureHost();
+        let project;
+        if (mode) {
+          const r = await callHostTool("create_video_project", {
+            title,
+            script,
+            source_url: sourceUrl,
+          });
+          project = r?.structuredContent?.project;
+        } else {
+          const r = await fetch("/api/projects", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ title, script, source_url: sourceUrl }),
+          });
+          project = (await r.json()).project;
+        }
+        if (project) {
+          activeProject = project;
+          renderPlan(project);
+          const prompt = `Use only the Video Editor app tools.
+
+Bạn là Video Content Strategist + Short-form Script Writer, chuyên video dọc 9:16 cho TikTok/Reels/YouTube Shorts.
 
 Project cần phân tích: ${project.id}
 Tên project: ${project.title}
-Link nguồn: ${project.workflow?.sourceUrl || '(không có)'}
+Link nguồn: ${project.workflow?.sourceUrl || "(không có)"}
 
-Nhiệm vụ:
-1. Đọc link nguồn và/hoặc kịch bản bên dưới.
-2. Gọi tool set_project_content_plan cho đúng project_id = "${project.id}".
-3. Tạo 5-12 màn video 9:16, mỗi item phải có đủ:
-- id
-- title
-- purpose
-- content
-- duration
-4. Content phải ngắn, dễ đọc, phù hợp màn hình dọc, tiếng Việt tự nhiên.
-5. BẮT BUỘC tuân theo style edit bên dưới khi phân tích.
-6. Ở bước này tuyệt đối CHƯA gọi generate_project_edit và CHƯA tạo scenes/layers.
+QUY TẮC CỨNG (không được vi phạm):
+- Không bịa thêm số liệu, luận điểm hay ví dụ không có trong nguồn. Nếu nguồn không rõ, ghi rõ "ví dụ minh họa" / "quan điểm tác giả" ngay trong content.
+- Giữ đúng logic và lập luận gốc; được cắt bớt phần lan man nhưng không được đổi ý.
+- Hook (màn đầu) phải mạnh nhưng KHÔNG clickbait — phải trả đúng những gì các màn sau giao.
+- KHÔNG tái sử dụng visual/concept của project mẫu ${SAMPLE_PROJECT_ID || "social-algorithm-short"}.
+
+QUY TRÌNH:
+1. Đọc toàn bộ link nguồn và/hoặc kịch bản bên dưới trước khi tóm tắt (không phân tích rời rạc từng đoạn).
+2. Xác định insight quan trọng nhất, luận điểm hỗ trợ, và phần nên bỏ.
+3. Chia thành 5-12 màn video 9:16 theo flow: HOOK → GIẢI THÍCH → VISUAL → INSIGHT → KẾT LUẬN.
+4. Gọi tool set_project_content_plan cho đúng project_id = "${project.id}" với mỗi item có đủ:
+   - id, title, purpose (vai trò của màn trong flow), content (voice-over ngắn, 1 ý/câu, dễ đọc), duration (giây).
+5. Content phải ngắn, tiếng Việt tự nhiên, dễ đọc thành voice-over và dễ dựng subtitle.
+6. BẮT BUỘC tuân theo style edit bên dưới khi phân tích.
+7. Ở bước này tuyệt đối CHƯA gọi generate_project_edit và CHƯA tạo scenes/layers.
+8. Trước khi gọi tool, tự kiểm tra: đã bịa số liệu chưa? hook có clickbait không? nếu có, sửa lại trước.
 
 STYLE EDIT:
 ${stylePrompt(project)}
 
 Kịch bản nguồn:
 ${script}`;
-        if(mode){
-          updateWorkflowCard('pending', 'Đã tạo project, đang chờ ChatGPT phân tích', 'ChatGPT sẽ lưu content plan vào JSON project này. Khi AI ghi xong, màn duyệt nội dung sẽ tự hiện dữ liệu mới.');
-          await (mode==='mcp'?mcpBridge.sendMessage(prompt):host().sendFollowUpMessage({prompt}));
-          startAiWatch(project.version);
+          if (mode) {
+            updateWorkflowCard(
+              "pending",
+              "Đã tạo project, đang chờ ChatGPT phân tích",
+              "ChatGPT sẽ lưu content plan vào JSON project này. Khi AI ghi xong, màn duyệt nội dung sẽ tự hiện dữ liệu mới.",
+            );
+            await (mode === "mcp"
+              ? mcpBridge.sendMessage(prompt)
+              : host().sendFollowUpMessage({ prompt }));
+            startAiWatch(project.version);
+          } else {
+            updateWorkflowCard(
+              "warn",
+              "Project đã lưu local",
+              "Bạn đang ở standalone mode. JSON đã được tạo nhưng muốn ChatGPT phân tích script thì cần mở widget qua MCP trong cuộc chat.",
+            );
+          }
+        }
+        $("analyzeScript").disabled = false;
+        $("analyzeScript").textContent = "Phân tích kịch bản với ChatGPT →";
+      }
+      function finishStartupSoon(delay = 900) {
+        clearTimeout(startupTimer);
+        startupTimer = setTimeout(() => {
+          startupPhase = false;
+        }, delay);
+      }
+      function applyProject(project) {
+        activeProject = JSON.parse(JSON.stringify(project));
+        $("currentProjectTitle").textContent = project.title || "";
+        projectVersion = Number(project.version || 0);
+        if (project?.scenes?.length) {
+          const currentId = scenes.length
+            ? scenes[currentSceneIndex()]?.id
+            : null;
+          scenes = JSON.parse(JSON.stringify(project.scenes));
+          scenes.forEach((s, i) => (s.id = s.id || `scene-${i + 1}`));
+          const idx = Math.max(
+            0,
+            scenes.findIndex((s) => s.id === currentId),
+          );
+          const bb = bounds();
+          t = Math.min(bb[idx]?.a || 0, Math.max(0, totalDur() - 0.001));
+          selected = null;
+          rebuild();
+          render();
+          updateTools();
+          updateAiContext();
+          setTimeout(() => updateModelContext(), startupPhase ? 220 : 0);
         } else {
-          updateWorkflowCard('warn', 'Project đã lưu local', 'Bạn đang ở standalone mode. JSON đã được tạo nhưng muốn ChatGPT phân tích script thì cần mở widget qua MCP trong cuộc chat.');
+          scenes = [];
+          t = 0;
+          selected = null;
+          rebuild();
+          render();
+          updateTools();
+          updateAiContext();
+        }
+        requestHostResize();
+        finishStartupSoon();
+        setServerState(
+          `Đã nhận project v${projectVersion} từ MCP · ${bridgeMode}`,
+          true,
+        );
+        if (routeOnApply) {
+          const status = project.workflow?.status || "ready";
+          if (status === "review") renderPlan(project);
+          else if (status === "planning") renderPlan(project);
+          else if (status === "ready") showEditor();
+          else showStudioView("createView");
         }
       }
-      $('analyzeScript').disabled=false; $('analyzeScript').textContent='Phân tích kịch bản với ChatGPT →';
-    }
-    function finishStartupSoon(delay = 900) {
-      clearTimeout(startupTimer);
-      startupTimer = setTimeout(() => { startupPhase = false }, delay);
-    }
-    function applyProject(project) {
-      activeProject = JSON.parse(JSON.stringify(project));
-      $('currentProjectTitle').textContent = project.title || '';
-      projectVersion = Number(project.version || 0);
-      if (project?.scenes?.length) {
-        const currentId = scenes.length ? scenes[currentSceneIndex()]?.id : null;
-        scenes = JSON.parse(JSON.stringify(project.scenes));
-        scenes.forEach((s, i) => s.id = s.id || `scene-${i + 1}`);
-        const idx = Math.max(0, scenes.findIndex(s => s.id === currentId));
-        const bb = bounds();
-        t = Math.min(bb[idx]?.a || 0, Math.max(0, totalDur() - .001));
-        selected = null;
-        rebuild(); render(); updateTools(); updateAiContext();
-        setTimeout(() => updateModelContext(), startupPhase ? 220 : 0);
-      } else {
-        scenes = [];
-        t = 0;
-        selected = null;
-        rebuild();
-        render();
-        updateTools();
-        updateAiContext();
+      function updateFromHostResult(result) {
+        const payload = result?.structuredContent || result || {};
+        const project = payload.project || payload.videoProject;
+        // Only trust mutations from real writes. A "read" scope mutation (e.g. from
+        // the get_video_project polling calls in startAiWatch) must never overwrite
+        // the last real "model" mutation, or completion detection breaks.
+        if (payload.mutation && payload.mutation.scope !== "read")
+          lastMutation = payload.mutation;
+        if (project) applyProject(project);
       }
-      requestHostResize(); finishStartupSoon();
-      setServerState(`Đã nhận project v${projectVersion} từ MCP · ${bridgeMode}`, true)
-      if (routeOnApply) {
-        const status = project.workflow?.status || 'ready';
-        if (status === 'review') renderPlan(project);
-        else if (status === 'planning') renderPlan(project);
-        else if (status === 'ready') showEditor();
-        else showStudioView('createView');
-      }
-    }
-    function updateFromHostResult(result) {
-      const payload = result?.structuredContent || result || {};
-      const project = payload.project || payload.videoProject;
-      // Only trust mutations from real writes. A "read" scope mutation (e.g. from
-      // the get_video_project polling calls in startAiWatch) must never overwrite
-      // the last real "model" mutation, or completion detection breaks.
-      if (payload.mutation && payload.mutation.scope !== "read") lastMutation = payload.mutation;
-      if (project) applyProject(project)
-    }
 
-    const mcpBridge = (() => {
-      let nextId = 1, ready = false, initializing = null, hostContext = {}, pending = new Map();
-      function isEmbedded() { return typeof window !== "undefined" && window.parent && window.parent !== window }
-      function post(message) { if (!isEmbedded()) throw new Error("Editor đang chạy standalone, không nằm trong iframe MCP App"); window.parent.postMessage(message, "*") }
-      function request(method, params = {}, timeout = 8000) {
-        const id = nextId++;
-        return new Promise((resolve, reject) => {
-          const timer = setTimeout(() => { pending.delete(id); reject(new Error(`Host không phản hồi ${method}`)) }, timeout);
-          pending.set(id, { resolve, reject, timer });
-          post({ jsonrpc: "2.0", id, method, params });
+      const mcpBridge = (() => {
+        let nextId = 1,
+          ready = false,
+          initializing = null,
+          hostContext = {},
+          pending = new Map();
+        function isEmbedded() {
+          return (
+            typeof window !== "undefined" &&
+            window.parent &&
+            window.parent !== window
+          );
+        }
+        function post(message) {
+          if (!isEmbedded())
+            throw new Error(
+              "Editor đang chạy standalone, không nằm trong iframe MCP App",
+            );
+          window.parent.postMessage(message, "*");
+        }
+        function request(method, params = {}, timeout = 8000) {
+          const id = nextId++;
+          return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+              pending.delete(id);
+              reject(new Error(`Host không phản hồi ${method}`));
+            }, timeout);
+            pending.set(id, { resolve, reject, timer });
+            post({ jsonrpc: "2.0", id, method, params });
+          });
+        }
+        function notify(method, params = {}) {
+          post({ jsonrpc: "2.0", method, params });
+        }
+        window.addEventListener("message", (event) => {
+          if (event.source !== window.parent) return;
+          const data = event.data;
+          if (!data || data.jsonrpc !== "2.0") return;
+          if (data.id != null && pending.has(data.id)) {
+            const p = pending.get(data.id);
+            clearTimeout(p.timer);
+            pending.delete(data.id);
+            if (data.error)
+              p.reject(
+                new Error(data.error.message || JSON.stringify(data.error)),
+              );
+            else p.resolve(data.result);
+            return;
+          }
+          if (data.method === "ui/notifications/tool-result") {
+            updateFromHostResult(data.params);
+            return;
+          }
+          if (data.method === "ui/notifications/host-context-changed") {
+            hostContext = { ...hostContext, ...(data.params || {}) };
+            applyHostLayout(hostContext);
+            return;
+          }
+          if (data.method === "ui/resource-teardown" && data.id != null) {
+            post({ jsonrpc: "2.0", id: data.id, result: {} });
+          }
+        });
+        async function init() {
+          if (ready) return true;
+          if (initializing) return initializing;
+          if (!isEmbedded()) return false;
+          initializing = (async () => {
+            try {
+              const result = await request("ui/initialize", {
+                protocolVersion: "2026-01-26",
+                appCapabilities: {
+                  availableDisplayModes: ["inline", "fullscreen"],
+                },
+                clientInfo: {
+                  name: "chatgpt-video-editor-ui",
+                  version: "0.3.1",
+                },
+              });
+              hostContext = result?.hostContext || {};
+              notify("ui/notifications/initialized", {});
+              ready = true;
+              bridgeMode = "MCP Apps bridge";
+              hostConnected = true;
+              applyHostLayout(hostContext);
+              setupHostResizeObserver();
+              setServerState(
+                "Đã kết nối MCP Apps bridge · không cần API key.",
+                true,
+              );
+              return true;
+            } catch (e) {
+              console.warn("MCP Apps bridge init failed", e);
+              return false;
+            } finally {
+              initializing = null;
+            }
+          })();
+          return initializing;
+        }
+        async function callTool(name, args) {
+          if (!ready && !(await init()))
+            throw new Error("MCP Apps bridge chưa kết nối");
+          return request("tools/call", { name, arguments: args || {} }, 15000);
+        }
+        async function sendMessage(text) {
+          if (!ready && !(await init()))
+            throw new Error("MCP Apps bridge chưa kết nối");
+          return request(
+            "ui/message",
+            { role: "user", content: { type: "text", text } },
+            15000,
+          );
+        }
+        async function updateContext(modelContent) {
+          if (!ready && !(await init())) return false;
+          await request(
+            "ui/update-model-context",
+            {
+              content: [
+                { type: "text", text: "Video editor selection/context" },
+              ],
+              structuredContent: modelContent,
+            },
+            8000,
+          );
+          return true;
+        }
+        async function requestDisplayMode(mode) {
+          if (!ready && !(await init()))
+            throw new Error("MCP Apps bridge chưa kết nối");
+          const result = await request(
+            "ui/request-display-mode",
+            { mode },
+            8000,
+          );
+          hostContext = { ...hostContext, displayMode: result?.mode || mode };
+          applyHostLayout(hostContext);
+          return result;
+        }
+        function notifySize(width, height) {
+          if (!ready) return;
+          notify("ui/notifications/size-changed", { width, height });
+        }
+        return {
+          init,
+          callTool,
+          sendMessage,
+          updateContext,
+          requestDisplayMode,
+          notifySize,
+          isEmbedded,
+          get ready() {
+            return ready;
+          },
+          get hostContext() {
+            return hostContext;
+          },
+        };
+      })();
+
+      async function ensureHost() {
+        if (mcpBridge.ready) return "mcp";
+        if (await mcpBridge.init()) return "mcp";
+        if (host()) {
+          bridgeMode = "window.openai fallback";
+          hostConnected = true;
+          document.documentElement.classList.add("mcp-host", "mcp-inline");
+          setServerState(
+            "Đã kết nối ChatGPT compatibility bridge · không cần API key.",
+            true,
+          );
+          return "openai";
+        }
+        hostConnected = false;
+        bridgeMode = "standalone";
+        return null;
+      }
+      async function callHostTool(name, args) {
+        const mode = await ensureHost();
+        if (!mode) {
+          setServerState(
+            "Standalone: hãy gọi open_video_editor từ app MCP trong cuộc chat, không mở /editor trực tiếp.",
+            false,
+          );
+          return null;
+        }
+        setServerState("Đang đồng bộ…", true);
+        try {
+          const res =
+            mode === "mcp"
+              ? await mcpBridge.callTool(name, args)
+              : await host().callTool(name, args);
+          updateFromHostResult(res);
+          setServerState(`Đã đồng bộ với MCP · ${bridgeMode}`, true);
+          return res;
+        } catch (e) {
+          console.error(e);
+          setServerState("Lỗi MCP: " + (e?.message || String(e)), false);
+          return null;
+        }
+      }
+
+      async function pullLatestProject(reason = "manual") {
+        if (pulling) return null;
+        pulling = true;
+        try {
+          const before = projectVersion;
+          const res = await callHostTool("get_video_project", {});
+          const p = res?.structuredContent?.project || res?.project;
+          if (p) {
+            const v = Number(p.version || 0);
+            setServerState(
+              v > before
+                ? `Đã kéo bản AI mới v${v}.`
+                : `Đã kiểm tra MCP · đang ở v${v}.`,
+              true,
+            );
+          }
+          return res;
+        } finally {
+          pulling = false;
+        }
+      }
+      function stopAiWatch() {
+        if (aiWatchTimer) {
+          clearTimeout(aiWatchTimer);
+          aiWatchTimer = null;
+        }
+      }
+      function startAiWatch(baseVersion = projectVersion) {
+        stopAiWatch();
+        aiWatchBaseVersion = baseVersion;
+        // Fast polling (1.2s) for the first 45s covers most single/double tool-call
+        // edits. Then fall back to slower polling (4s) for another 90s to cover
+        // longer multi-tool-call turns (e.g. "review toàn video" doing get + several
+        // update_* calls) before giving up. UI (applyProject) is refreshed on every
+        // single poll regardless, so the canvas is never stale even if this status
+        // message eventually times out.
+        const fastUntil = Date.now() + 45000,
+          graceUntil = fastUntil + 90000;
+        const poll = async () => {
+          await pullLatestProject("ai-watch");
+          if (
+            projectVersion > aiWatchBaseVersion &&
+            lastMutation?.source === "model"
+          ) {
+            setServerState(
+              `✓ Đã tự đồng bộ thay đổi AI · project v${projectVersion}.`,
+              true,
+            );
+            return;
+          }
+          const now = Date.now();
+          if (now > graceUntil) {
+            setServerState(
+              `Chưa thấy AI cập nhật thêm · bấm “Lấy bản AI mới” nếu cần.`,
+              false,
+            );
+            return;
+          }
+          // ui/message only confirms message delivery, not completion of model tool calls — keep polling.
+          aiWatchTimer = setTimeout(poll, now > fastUntil ? 4000 : 1200);
+        };
+        aiWatchTimer = setTimeout(poll, 700);
+      }
+
+      function sceneSnapshot(index = currentSceneIndex()) {
+        const sc = scenes[index];
+        return sc ? JSON.parse(JSON.stringify(sc)) : null;
+      }
+      function queueSync(task, delay = 350) {
+        pendingSyncTask = task;
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(flushPendingSync, delay);
+      }
+      function flushPendingSync() {
+        if (!pendingSyncTask) return syncInFlight;
+        const task = pendingSyncTask;
+        pendingSyncTask = null;
+        clearTimeout(syncTimer);
+        syncTimer = null;
+        syncInFlight = syncInFlight
+          .then(() => task())
+          .catch((e) => {
+            console.error("sync failed", e);
+          });
+        return syncInFlight;
+      }
+      function buildModelContextPayload() {
+        if (!hasScenes()) return null;
+        const idx = currentSceneIndex(),
+          sc = scenes[idx],
+          layer = selectedLayer();
+        if (!sc) return null;
+        return {
+          selectedScene: {
+            id: sc.id,
+            index: idx + 1,
+            title: sc.title,
+            duration: sc.duration,
+            layers: sc.layers.map((l) => ({
+              id: l.id,
+              text: l.text,
+              size: l.size,
+              x: l.x,
+              y: l.y,
+              weight: l.weight,
+              align: l.align,
+              color: l.color,
+            })),
+          },
+          selectedLayer: layer ? { id: layer.id, text: layer.text } : null,
+        };
+      }
+      function scheduleModelContextUpdate(delay = startupPhase ? 260 : 0) {
+        clearTimeout(modelContextTimer);
+        modelContextTimer = setTimeout(() => {
+          const modelContent = buildModelContextPayload();
+          if (!modelContent) return;
+          const key = JSON.stringify(modelContent);
+          if (key === lastModelContextKey) return;
+          lastModelContextKey = key;
+          try {
+            if (mcpBridge.ready)
+              mcpBridge
+                .updateContext(modelContent)
+                .catch((e) => console.warn("update-model-context failed", e));
+            else if (host()?.setWidgetState)
+              host().setWidgetState({
+                modelContent: JSON.stringify(modelContent),
+                privateContent: {
+                  sceneIndex: modelContent.selectedScene.index - 1,
+                  layerId: modelContent.selectedLayer?.id || null,
+                },
+              });
+          } catch (e) {
+            console.warn("model context update failed", e);
+          }
+        }, delay);
+      }
+      function scheduleSyncSceneDuration(index = currentSceneIndex()) {
+        queueSync(async () => {
+          const sc = sceneSnapshot(index);
+          if (!sc) return null;
+          return callHostTool("update_scene", {
+            scene_id: sc.id,
+            duration: sc.duration,
+            client_origin: "widget",
+          });
         });
       }
-      function notify(method, params = {}) { post({ jsonrpc: "2.0", method, params }) }
-      window.addEventListener("message", event => {
-        if (event.source !== window.parent) return;
-        const data = event.data; if (!data || data.jsonrpc !== "2.0") return;
-        if (data.id != null && pending.has(data.id)) { const p = pending.get(data.id); clearTimeout(p.timer); pending.delete(data.id); if (data.error) p.reject(new Error(data.error.message || JSON.stringify(data.error))); else p.resolve(data.result); return }
-        if (data.method === "ui/notifications/tool-result") { updateFromHostResult(data.params); return }
-        if (data.method === "ui/notifications/host-context-changed") { hostContext = { ...hostContext, ...(data.params || {}) }; applyHostLayout(hostContext); return }
-        if (data.method === "ui/resource-teardown" && data.id != null) { post({ jsonrpc: "2.0", id: data.id, result: {} }) }
-      });
-      async function init() {
-        if (ready) return true; if (initializing) return initializing; if (!isEmbedded()) return false;
-        initializing = (async () => {
-          try {
-            const result = await request("ui/initialize", { protocolVersion: "2026-01-26", appCapabilities: { availableDisplayModes: ["inline", "fullscreen"] }, clientInfo: { name: "chatgpt-video-editor-ui", version: "0.3.1" } });
-            hostContext = result?.hostContext || {}; notify("ui/notifications/initialized", {}); ready = true; bridgeMode = "MCP Apps bridge"; hostConnected = true; applyHostLayout(hostContext); setupHostResizeObserver(); setServerState("Đã kết nối MCP Apps bridge · không cần API key.", true); return true;
-          } catch (e) { console.warn("MCP Apps bridge init failed", e); return false }
-          finally { initializing = null }
-        })(); return initializing;
+      function scheduleSyncLayer(index, layerIndex) {
+        queueSync(async () => {
+          const sc = sceneSnapshot(index),
+            layer = sc?.layers?.[layerIndex];
+          if (!sc || !layer) return null;
+          return callHostTool("update_text_layer", {
+            scene_id: sc.id,
+            layer_id: layer.id,
+            text: layer.text,
+            x: layer.x,
+            y: layer.y,
+            size: layer.size,
+            color: layer.color,
+            weight: layer.weight,
+            align: layer.align,
+            maxWidth: layer.maxWidth,
+            client_origin: "widget",
+          });
+        });
       }
-      async function callTool(name, args) { if (!ready && !(await init())) throw new Error("MCP Apps bridge chưa kết nối"); return request("tools/call", { name, arguments: args || {} }, 15000) }
-      async function sendMessage(text) { if (!ready && !(await init())) throw new Error("MCP Apps bridge chưa kết nối"); return request("ui/message", { role: "user", content: { type: "text", text } }, 15000) }
-      async function updateContext(modelContent) { if (!ready && !(await init())) return false; await request("ui/update-model-context", { content: [{ type: "text", text: "Video editor selection/context" }], structuredContent: modelContent }, 8000); return true }
-      async function requestDisplayMode(mode) { if (!ready && !(await init())) throw new Error("MCP Apps bridge chưa kết nối"); const result = await request("ui/request-display-mode", { mode }, 8000); hostContext = { ...hostContext, displayMode: result?.mode || mode }; applyHostLayout(hostContext); return result }
-      function notifySize(width, height) { if (!ready) return; notify("ui/notifications/size-changed", { width, height }) }
-      return { init, callTool, sendMessage, updateContext, requestDisplayMode, notifySize, isEmbedded, get ready() { return ready }, get hostContext() { return hostContext } }
-    })();
-
-    async function ensureHost() {
-      if (mcpBridge.ready) return "mcp";
-      if (await mcpBridge.init()) return "mcp";
-      if (host()) { bridgeMode = "window.openai fallback"; hostConnected = true; document.documentElement.classList.add("mcp-host", "mcp-inline"); setServerState("Đã kết nối ChatGPT compatibility bridge · không cần API key.", true); return "openai" }
-      hostConnected = false; bridgeMode = "standalone"; return null;
-    }
-    async function callHostTool(name, args) { const mode = await ensureHost(); if (!mode) { setServerState("Standalone: hãy gọi open_video_editor từ app MCP trong cuộc chat, không mở /editor trực tiếp.", false); return null } setServerState("Đang đồng bộ…", true); try { const res = mode === "mcp" ? await mcpBridge.callTool(name, args) : await host().callTool(name, args); updateFromHostResult(res); setServerState(`Đã đồng bộ với MCP · ${bridgeMode}`, true); return res } catch (e) { console.error(e); setServerState("Lỗi MCP: " + (e?.message || String(e)), false); return null } }
-
-    async function pullLatestProject(reason = "manual") {
-      if (pulling) return null;
-      pulling = true;
-      try {
-        const before = projectVersion;
-        const res = await callHostTool("get_video_project", {});
-        const p = res?.structuredContent?.project || res?.project;
-        if (p) {
-          const v = Number(p.version || 0);
-          setServerState(v > before ? `Đã kéo bản AI mới v${v}.` : `Đã kiểm tra MCP · đang ở v${v}.`, true);
-        }
-        return res;
-      } finally { pulling = false; }
-    }
-    function stopAiWatch() { if (aiWatchTimer) { clearTimeout(aiWatchTimer); aiWatchTimer = null } }
-    function startAiWatch(baseVersion = projectVersion) {
-      stopAiWatch(); aiWatchBaseVersion = baseVersion;
-      // Fast polling (1.2s) for the first 45s covers most single/double tool-call
-      // edits. Then fall back to slower polling (4s) for another 90s to cover
-      // longer multi-tool-call turns (e.g. "review toàn video" doing get + several
-      // update_* calls) before giving up. UI (applyProject) is refreshed on every
-      // single poll regardless, so the canvas is never stale even if this status
-      // message eventually times out.
-      const fastUntil = Date.now() + 45000, graceUntil = fastUntil + 90000;
-      const poll = async () => {
-        await pullLatestProject("ai-watch");
-        if (projectVersion > aiWatchBaseVersion && lastMutation?.source === "model") {
-          setServerState(`✓ Đã tự đồng bộ thay đổi AI · project v${projectVersion}.`, true);
+      function updateModelContext() {
+        scheduleModelContextUpdate();
+        updateAiContext();
+      }
+      function updateAiContext() {
+        if (!hasScenes()) {
+          $("aiContext").innerHTML =
+            `<b>Chưa có scene render</b><br>Project mới sẽ không dùng animation/canvas của sample project. Xác nhận content plan để AI tạo khung edit mới hoàn toàn.`;
           return;
         }
-        const now = Date.now();
-        if (now > graceUntil) { setServerState(`Chưa thấy AI cập nhật thêm · bấm “Lấy bản AI mới” nếu cần.`, false); return }
-        // ui/message only confirms message delivery, not completion of model tool calls — keep polling.
-        aiWatchTimer = setTimeout(poll, now > fastUntil ? 4000 : 1200);
-      };
-      aiWatchTimer = setTimeout(poll, 700);
-    }
-
-    function sceneSnapshot(index = currentSceneIndex()) { const sc = scenes[index]; return sc ? JSON.parse(JSON.stringify(sc)) : null }
-    function queueSync(task, delay = 350) {
-      pendingSyncTask = task;
-      clearTimeout(syncTimer);
-      syncTimer = setTimeout(flushPendingSync, delay);
-    }
-    function flushPendingSync() {
-      if (!pendingSyncTask) return syncInFlight;
-      const task = pendingSyncTask;
-      pendingSyncTask = null;
-      clearTimeout(syncTimer);
-      syncTimer = null;
-      syncInFlight = syncInFlight.then(() => task()).catch(e => { console.error("sync failed", e) });
-      return syncInFlight;
-    }
-    function buildModelContextPayload() {
-      if (!hasScenes()) return null;
-      const idx = currentSceneIndex(), sc = scenes[idx], layer = selectedLayer();
-      if (!sc) return null;
-      return { selectedScene: { id: sc.id, index: idx + 1, title: sc.title, duration: sc.duration, layers: sc.layers.map(l => ({ id: l.id, text: l.text, size: l.size, x: l.x, y: l.y, weight: l.weight, align: l.align, color: l.color })) }, selectedLayer: layer ? { id: layer.id, text: layer.text } : null };
-    }
-    function scheduleModelContextUpdate(delay = startupPhase ? 260 : 0) {
-      clearTimeout(modelContextTimer);
-      modelContextTimer = setTimeout(() => {
-        const modelContent = buildModelContextPayload();
-        if (!modelContent) return;
-        const key = JSON.stringify(modelContent);
-        if (key === lastModelContextKey) return;
-        lastModelContextKey = key;
-        try {
-          if (mcpBridge.ready) mcpBridge.updateContext(modelContent).catch(e => console.warn("update-model-context failed", e));
-          else if (host()?.setWidgetState) host().setWidgetState({ modelContent: JSON.stringify(modelContent), privateContent: { sceneIndex: modelContent.selectedScene.index - 1, layerId: modelContent.selectedLayer?.id || null } });
-        } catch (e) { console.warn("model context update failed", e) }
-      }, delay);
-    }
-    function scheduleSyncSceneDuration(index = currentSceneIndex()) {
-      queueSync(async () => {
-        const sc = sceneSnapshot(index);
-        if (!sc) return null;
-        return callHostTool("update_scene", { scene_id: sc.id, duration: sc.duration, client_origin: "widget" });
-      });
-    }
-    function scheduleSyncLayer(index, layerIndex) {
-      queueSync(async () => {
-        const sc = sceneSnapshot(index), layer = sc?.layers?.[layerIndex];
-        if (!sc || !layer) return null;
-        return callHostTool("update_text_layer", { scene_id: sc.id, layer_id: layer.id, text: layer.text, x: layer.x, y: layer.y, size: layer.size, color: layer.color, weight: layer.weight, align: layer.align, maxWidth: layer.maxWidth, client_origin: "widget" });
-      });
-    }
-    function updateModelContext() { scheduleModelContextUpdate(); updateAiContext() }
-    function updateAiContext() {
-      if (!hasScenes()) {
-        $("aiContext").innerHTML = `<b>Chưa có scene render</b><br>Project mới sẽ không dùng animation/canvas của sample project. Xác nhận content plan để AI tạo khung edit mới hoàn toàn.`;
-        return;
+        const idx = currentSceneIndex(),
+          sc = scenes[idx],
+          layer = selectedLayer();
+        if (!sc) return;
+        $("aiContext").innerHTML =
+          `<b>Màn ${idx + 1}: ${sc.title}</b> · ${sc.duration}s<br>${sc.layers.map((l) => `<span style="color:${l.color}">${escapeHtml(l.text).replace(/\n/g, " / ")}</span>`).join("<br>")}${layer ? `<br><br><b>Text đang chọn:</b> ${escapeHtml(layer.text)}` : ""}`;
       }
-      const idx = currentSceneIndex(), sc = scenes[idx], layer = selectedLayer();
-      if (!sc) return;
-      $("aiContext").innerHTML = `<b>Màn ${idx + 1}: ${sc.title}</b> · ${sc.duration}s<br>${sc.layers.map(l => `<span style="color:${l.color}">${escapeHtml(l.text).replace(/\n/g, " / ")}</span>`).join("<br>")}${layer ? `<br><br><b>Text đang chọn:</b> ${escapeHtml(layer.text)}` : ""}`;
-    }
-    function escapeHtml(v) { return String(v).replace(/[&<>\"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c])) }
-    function defaultSceneAiPrompt(sc) {
-      return `Viết lại màn "${sc.title}" ngắn hơn, dễ đọc trong 2 giây, giữ đúng ý chính, tiếng Việt tự nhiên, ưu tiên hook mạnh và bố cục chữ gọn cho video dọc.`;
-    }
-    function flashAiPanel() {
-      const panel = document.querySelector('.ai-panel');
-      if (!panel) return;
-      panel.classList.add('flash');
-      clearTimeout(flashAiPanel._timer);
-      flashAiPanel._timer = setTimeout(() => panel.classList.remove('flash'), 1200);
-    }
-    function focusAiPanel() {
-      flashAiPanel();
-      $('aiPrompt').focus();
-      $('aiPrompt').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    function activateSceneForAi(index, { autoSend = false, useDefaultPrompt = false } = {}) {
-      if (!hasScenes()) return Promise.resolve();
-      const bb = bounds(), sc = scenes[index];
-      if (!sc || !bb[index]) return;
-      closeInlineEditor(true);
-      t = bb[index].a;
-      selected = null;
-      render();
-      updateTools();
-      updateModelContext();
-      const prompt = $('aiPrompt').value.trim();
-      if (useDefaultPrompt || !prompt) $('aiPrompt').value = defaultSceneAiPrompt(sc);
-      focusAiPanel();
-      if (autoSend) return sendAiPrompt($('aiPrompt').value, false);
-      setServerState(`Đã chọn Màn ${index + 1} cho AI.`, true);
-      return Promise.resolve();
-    }
-    async function sendAiPrompt(text, whole = false) {
-      text = String(text || "").trim();
-      if (!text && !whole) return;
-      if (!hasScenes() && !whole) { setServerState('Project này chưa có scene để sửa. Hãy tạo khung edit trước.', false); return }
-      const idx = currentSceneIndex(), sc = scenes[idx];
-      const context = whole
-        ? `Hãy review toàn bộ video project hiện tại. Dùng get_video_project trước, sau đó dùng update_scene hoặc update_text_layer để áp dụng các chỉnh sửa cần thiết. QUAN TRỌNG: chỉ trả lời trong chat là KHÔNG đủ — bạn phải thực sự gọi update_scene/update_text_layer cho từng thay đổi. Với project không phải sample, không tái dùng visual style cũ; hãy giữ concept riêng của project và tăng độ chi tiết editor-level cho từng scene.`
-        : `Bạn đang chỉnh Màn ${idx + 1} (${sc.id}) — ${sc.title}. Yêu cầu của tôi: ${text}\n\nHãy dùng MCP tools của Video Editor để áp dụng thay đổi trực tiếp vào đúng scene này. Ưu tiên update_text_layer cho thay đổi chữ/style nhỏ; dùng update_scene khi cần thay duration hoặc nhiều layer. QUAN TRỌNG: chỉ mô tả thay đổi trong câu trả lời chat là KHÔNG đủ — bạn bắt buộc phải gọi tool thật (update_text_layer/update_scene) cho MỌI layer cần đổi, kể cả khi chỉ dịch một chữ, nếu không thay đổi sẽ không được lưu và UI sẽ không cập nhật. Không kéo scene này về visual style của sample project; hãy giữ concept riêng, chi tiết hơn, giống một editor thật.`;
-      const mode = await ensureHost();
-      try {
-        await flushPendingSync();
-        if (mode === "mcp") { const v = projectVersion; await mcpBridge.sendMessage(context); setServerState("Đã gửi prompt · đang chờ AI cập nhật MCP…", true); startAiWatch(v); return }
-        if (mode === "openai" && host()?.sendFollowUpMessage) { const v = projectVersion; await host().sendFollowUpMessage({ prompt: context, scrollToBottom: true }); setServerState("Đã gửi prompt · đang chờ AI cập nhật MCP…", true); startAiWatch(v); return }
-      } catch (e) { console.error(e); setServerState("Không gửi được prompt: " + (e?.message || String(e)), false); return }
-      try { await navigator.clipboard.writeText(context); setServerState("Standalone: đã copy prompt. Hãy mở app MCP trong cuộc chat.", false) } catch { setServerState("Standalone: không có ChatGPT host bridge.", false) }
-    }
-    async function initHost() {
-      const mode = await ensureHost();
-      if (mode === "mcp") { setServerState("Đang tải editor…", true); requestHostResize(); setTimeout(() => pullLatestProject("init").catch(e => console.warn("initial project sync failed", e)), 80) }
-      else if (mode === "openai") { const out = host()?.toolOutput; if (out) updateFromHostResult({ structuredContent: out }); try { await pullLatestProject("init-openai") } catch (e) { console.warn("initial compatibility sync failed", e) } }
-      else setServerState("Standalone mode — /editor không phải ChatGPT App widget.", false);
-      updateModelContext();
-    }
-    window.addEventListener("openai:set_globals", () => { if (host()?.toolOutput) updateFromHostResult({ structuredContent: host().toolOutput }); bridgeMode = "window.openai fallback"; hostConnected = true; setServerState("Đã kết nối ChatGPT compatibility bridge.", true) });
-    function totalDur() { return scenes.reduce((a, s) => a + Math.max(.2, +s.duration || 0), 0) } function fmt(x) { x = Math.max(0, x); let m = Math.floor(x / 60), s = Math.floor(x % 60); return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') } function bounds() { let acc = 0; return scenes.map((s, i) => { let a = acc, b = acc + (+s.duration || 0); acc = b; return { i, a, b } }) } function sceneAt(time) { let b = bounds(); return b.find(x => time >= x.a && time < x.b) || b[b.length - 1] } function clamp(x, a = 0, b = 1) { return Math.max(a, Math.min(b, x)) } function easeOut(x) { return 1 - Math.pow(1 - clamp(x), 3) } function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r) }
-    function fitFont(text, maxW, size, weight) { let s = size; ctx.font = `${weight} ${s}px "Be Vietnam Pro",sans-serif`; while (ctx.measureText(text).width > maxW && s > 12) { s--; ctx.font = `${weight} ${s}px "Be Vietnam Pro",sans-serif` } return s }
-    function drawLayer(sceneIndex, layerIndex, alpha = 1) { const l = scenes[sceneIndex]?.layers?.[layerIndex]; if (!l) return; const lines = String(l.text).split('\n'); let size = fitFont(lines.reduce((a, b) => a.length > b.length ? a : b, ''), l.maxWidth || 460, +l.size || 30, +l.weight || 700); ctx.save(); ctx.globalAlpha = alpha; ctx.font = `${l.weight} ${size}px "Be Vietnam Pro",sans-serif`; ctx.fillStyle = l.color; ctx.textBaseline = 'middle'; ctx.textAlign = l.align || 'center'; const lineH = size * 1.18, totalH = lineH * lines.length; let maxW = 0; for (const line of lines) maxW = Math.max(maxW, ctx.measureText(line).width); lines.forEach((line, i) => ctx.fillText(line, l.x, l.y + (i - (lines.length - 1) / 2) * lineH)); ctx.restore(); let left = l.align === 'left' ? l.x : (l.align === 'right' ? l.x - maxW : l.x - maxW / 2); hitBoxes.push({ sceneIndex, layerIndex, x: left - 10, y: l.y - totalH / 2 - 8, w: maxW + 20, h: totalH + 16 }); }
-    function drawLayerWithOffset(sceneIndex, layerIndex, alpha = 1, offsetY = 0, scale = 1) {
-      const l = scenes[sceneIndex]?.layers?.[layerIndex];
-      if (!l) return;
-      const lines = String(l.text).split('\n');
-      let size = fitFont(lines.reduce((a, b) => a.length > b.length ? a : b, ''), l.maxWidth || 460, +l.size || 30, +l.weight || 700);
-      size = Math.max(12, Math.round(size * scale));
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.font = `${l.weight} ${size}px "Be Vietnam Pro",sans-serif`;
-      ctx.fillStyle = l.color;
-      ctx.textBaseline = 'middle';
-      ctx.textAlign = l.align || 'center';
-      const lineH = size * 1.18, totalH = lineH * lines.length;
-      let maxW = 0;
-      for (const line of lines) maxW = Math.max(maxW, ctx.measureText(line).width);
-      lines.forEach((line, i) => ctx.fillText(line, l.x, l.y + offsetY + (i - (lines.length - 1) / 2) * lineH));
-      ctx.restore();
-      let left = l.align === 'left' ? l.x : (l.align === 'right' ? l.x - maxW : l.x - maxW / 2);
-      hitBoxes.push({ sceneIndex, layerIndex, x: left - 10, y: l.y + offsetY - totalH / 2 - 8, w: maxW + 20, h: totalH + 16 });
-    }
-    function bg(accent = '#64e7ff') { ctx.fillStyle = '#070a11'; ctx.fillRect(0, 0, W, H); let g = ctx.createRadialGradient(W * .15, H * .15, 20, W * .15, H * .15, 450); g.addColorStop(0, accent + '24'); g.addColorStop(1, '#00000000'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.strokeStyle = '#ffffff09'; for (let y = 110; y < H; y += 70) { ctx.beginPath(); ctx.moveTo(28, y); ctx.lineTo(W - 28, y); ctx.stroke() } for (let x = 48; x < W; x += 74) { ctx.beginPath(); ctx.moveTo(x, 100); ctx.lineTo(x, H - 50); ctx.stroke() } ctx.fillStyle = '#8792a8'; ctx.font = '600 17px "Be Vietnam Pro"'; ctx.textAlign = 'left'; ctx.fillText('SOCIAL ALGORITHM', 28, 48); ctx.textAlign = 'right'; ctx.fillText('9:16', W - 28, 48) }
-    function pill(x, y, w, h, color) { ctx.fillStyle = color + '20'; ctx.strokeStyle = color + '70'; ctx.lineWidth = 2; rr(x, y, w, h, h / 2); ctx.fill(); ctx.stroke() }
-    function paletteForScene(sc = {}) {
-      const accent = sc?.style?.accent || ({ hook:'#64e7ff', first:'#ffd54a', signals:'#67f5a5', ladder:'#64e7ff', stop:'#ff6b7a', goal:'#ffd54a', niche:'#67f5a5', formula:'#64e7ff', quote:'#9b8cff', data:'#5eead4' }[sc.type] || '#64e7ff');
-      const background = sc?.style?.background || '#0a0f18';
-      return { accent, background };
-    }
-    function drawEmptyCanvas() {
-      hitBoxes = [];
-      ctx.clearRect(0, 0, W, H);
-      const g = ctx.createLinearGradient(0, 0, W, H);
-      g.addColorStop(0, '#08101b');
-      g.addColorStop(1, '#05070b');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
-      ctx.strokeStyle = '#243147';
-      ctx.lineWidth = 2;
-      rr(40, 110, 460, 740, 30);
-      ctx.stroke();
-      ctx.fillStyle = '#8ea0bb';
-      ctx.font = '700 22px "Be Vietnam Pro"';
-      ctx.textAlign = 'center';
-      ctx.fillText('Project này chưa có khung edit', 270, 300);
-      ctx.fillStyle = '#d6e0f0';
-      ctx.font = '800 42px "Be Vietnam Pro"';
-      ctx.fillText('Xác nhận content plan', 270, 392);
-      ctx.fillText('để AI dựng canvas mới', 270, 446);
-      ctx.fillStyle = '#6f809c';
-      ctx.font = '500 18px "Be Vietnam Pro"';
-      ctx.fillText('Không dùng animation mặc định của sample project.', 270, 560);
-      ctx.fillText('Scene mới sẽ render theo concept riêng của project.', 270, 594);
-    }
-    function drawGenericScene(sceneIndex, p) {
-      const sc = scenes[sceneIndex];
-      if (!sc) return;
-      const { accent, background } = paletteForScene(sc);
-      const layout = sc?.style?.layout || 'focus';
-      const kicker = sc?.style?.kicker || sc.title || sc.type || 'SCENE';
-      hitBoxes = [];
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = background;
-      ctx.fillRect(0, 0, W, H);
-      const glow = ctx.createRadialGradient(W * .2, H * .18, 20, W * .2, H * .18, 520);
-      glow.addColorStop(0, accent + '35');
-      glow.addColorStop(1, '#00000000');
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, W, H);
-      ctx.strokeStyle = '#ffffff0c';
-      for (let y = 100; y < H; y += 86) { ctx.beginPath(); ctx.moveTo(26, y); ctx.lineTo(W - 26, y); ctx.stroke() }
-      pill(36, 42, Math.min(300, 110 + kicker.length * 8), 42, accent);
-      ctx.fillStyle = accent;
-      ctx.font = '800 17px "Be Vietnam Pro"';
-      ctx.textAlign = 'left';
-      ctx.fillText(kicker.toUpperCase(), 58, 68);
-      ctx.fillStyle = '#91a3be';
-      ctx.font = '600 14px "Be Vietnam Pro"';
-      ctx.textAlign = 'right';
-      ctx.fillText((sc?.style?.motion || 'custom motion').toUpperCase(), W - 36, 68);
-      ctx.fillStyle = '#0d1522';
-      if (layout === 'split' || layout === 'comparison') {
-        rr(36, 180, 212, 570, 26); ctx.fill();
-        rr(292, 180, 212, 570, 26); ctx.fill();
-      } else if (layout === 'timeline' || layout === 'flow') {
-        rr(88, 176, 364, 612, 28); ctx.fill();
-        ctx.strokeStyle = accent + '88';
-        ctx.lineWidth = 4;
-        ctx.beginPath(); ctx.moveTo(270, 244); ctx.lineTo(270, 706); ctx.stroke();
-      } else if (layout === 'card-grid') {
-        [[36,188],[282,188],[36,476],[282,476]].forEach(([x,y]) => { rr(x, y, 222, 244, 24); ctx.fill(); });
-      } else if (layout === 'quote') {
-        rr(44, 210, 452, 500, 28); ctx.fill();
-        ctx.fillStyle = accent;
-        ctx.font = '900 110px "Be Vietnam Pro"';
-        ctx.textAlign = 'left';
-        ctx.fillText('“', 70, 295);
-        ctx.fillStyle = '#0d1522';
-      } else if (layout === 'data') {
-        rr(44, 190, 452, 540, 28); ctx.fill();
-        [0,1,2].forEach(i => { ctx.fillStyle = '#192235'; rr(84, 296 + i * 118, 372, 18, 9); ctx.fill(); });
-        ctx.fillStyle = '#0d1522';
-      } else {
-        rr(44, 176, 452, 610, 30); ctx.fill();
+      function escapeHtml(v) {
+        return String(v).replace(
+          /[&<>\"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+        );
       }
-      if (sc?.style?.notes) {
-        ctx.fillStyle = '#aebbd1';
-        ctx.font = '500 13px "Be Vietnam Pro"';
-        ctx.textAlign = 'center';
-        ctx.fillText(sc.style.notes, 270, 900);
+      function defaultSceneAiPrompt(sc) {
+        return `Viết lại màn "${sc.title}" ngắn hơn, dễ đọc trong 2 giây, giữ đúng ý chính, tiếng Việt tự nhiên, ưu tiên hook mạnh và bố cục chữ gọn cho video dọc.`;
       }
-      (sc.layers || []).forEach((_, i) => {
-        const layerIn = easeOut(clamp((p - i * .05) / .18));
-        drawLayerWithOffset(sceneIndex, i, .28 + .72 * layerIn, 24 * (1 - layerIn), .96 + .04 * layerIn);
-      });
-    }
-    function drawScene(sceneIndex, p) {
-      hitBoxes = []; const sc = scenes[sceneIndex], intro = easeOut(clamp(p / .18)); ctx.clearRect(0, 0, W, H);
-      if (!isSampleProject()) { drawGenericScene(sceneIndex, p); return }
-      if (sc.type === 'hook') { bg('#64e7ff'); pill(145, 132, 250, 46, '#ffd54a'); ctx.fillStyle = '#ffd54a'; ctx.font = '700 19px "Be Vietnam Pro"'; ctx.textAlign = 'center'; ctx.fillText('OPEN LOOP', 270, 155); drawLayer(sceneIndex, 0, intro); drawLayer(sceneIndex, 1, intro); drawLayer(sceneIndex, 2, intro) }
-      if (sc.type === 'first') { bg('#ffd54a'); drawLayer(sceneIndex, 0, intro); let pop = easeOut(clamp((p - .18) / .22)); ctx.save(); ctx.translate(270, 430); ctx.scale(.72 + .28 * pop, .72 + .28 * pop); ctx.translate(-270, -430); drawLayer(sceneIndex, 1, 1); ctx.restore(); pill(125, 525, 290, 46, '#ffd54a'); drawLayer(sceneIndex, 2, 1); drawLayer(sceneIndex, 3, 1); drawLayer(sceneIndex, 4, 1); drawLayer(sceneIndex, 5, 1) }
-      if (sc.type === 'signals') { bg('#67f5a5'); drawLayer(sceneIndex, 0, 1); drawLayer(sceneIndex, 1, 1); const icons = ['⏱', '♥', '💬', '↗']; for (let i = 0; i < 4; i++) { let q = easeOut(clamp((p - i * .08) / .2)), y = 330 + i * 105; ctx.globalAlpha = q; ctx.fillStyle = '#111827'; rr(55, y, 430, 78, 18); ctx.fill(); ctx.strokeStyle = '#2f3c51'; ctx.stroke(); ctx.fillStyle = i === 0 ? '#67f5a5' : '#f7f9ff'; ctx.font = '700 29px "Be Vietnam Pro"'; ctx.textAlign = 'left'; ctx.fillText(icons[i], 80, y + 50); ctx.fillStyle = '#273347'; rr(330, y + 30, 120, 16, 8); ctx.fill(); ctx.fillStyle = '#67f5a5'; rr(330, y + 30, 120 * q, 16, 8); ctx.fill(); ctx.globalAlpha = 1; drawLayer(sceneIndex, 2 + i, q) } }
-      if (sc.type === 'ladder') { bg('#64e7ff'); drawLayer(sceneIndex, 0, 1); drawLayer(sceneIndex, 1, 1); for (let i = 0; i < 4; i++) { let q = easeOut(clamp((p - i * .17) / .18)); ctx.globalAlpha = .3 + .7 * q; drawLayer(sceneIndex, 2 + i, 1); if (i < 3) { let y = [330, 450, 570][i]; ctx.strokeStyle = '#ffffff55'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(270, y + 34); ctx.lineTo(270, y + 80); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(261, y + 72); ctx.lineTo(279, y + 72); ctx.lineTo(270, y + 84); ctx.fill() } ctx.globalAlpha = 1 } drawLayer(sceneIndex, 6, 1) }
-      if (sc.type === 'stop') { bg('#ff6b7a'); drawLayer(sceneIndex, 0, intro); drawLayer(sceneIndex, 1, intro); ctx.fillStyle = '#ff6b7a'; rr(65, 430, 410, 130, 24); ctx.fill(); drawLayer(sceneIndex, 2, 1); drawLayer(sceneIndex, 3, 1); drawLayer(sceneIndex, 4, 1) }
-      if (sc.type === 'goal') { bg('#ffd54a'); drawLayer(sceneIndex, 0, 1); let q = easeOut(clamp((p - .12) / .25)); ctx.fillStyle = '#121827'; rr(45, 330, 450, 240, 28); ctx.fill(); ctx.strokeStyle = '#ffd54a80'; ctx.lineWidth = 3; ctx.stroke(); ctx.fillStyle = '#ffd54a'; ctx.font = '800 95px "Be Vietnam Pro"'; ctx.textAlign = 'center'; ctx.fillText(Math.floor(12 + q * 48) + 'm', 270, 440); drawLayer(sceneIndex, 1, 1); drawLayer(sceneIndex, 2, 1); drawLayer(sceneIndex, 3, 1) }
-      if (sc.type === 'niche') { bg('#64e7ff'); drawLayer(sceneIndex, 0, 1); drawLayer(sceneIndex, 1, 1); const emoji = ['😂', '⚽', '📚']; for (let i = 0; i < 3; i++) { let x = 62 + i * 150; ctx.fillStyle = '#121827'; rr(x, 340, 116, 120, 20); ctx.fill(); ctx.fillStyle = '#ff6b7a'; ctx.font = '800 25px "Be Vietnam Pro"'; ctx.textAlign = 'center'; ctx.fillText('×', x + 58, 370); ctx.fillStyle = '#fff'; ctx.font = '34px sans-serif'; ctx.fillText(emoji[i], x + 58, 414); drawLayer(sceneIndex, 2 + i, 1) } ctx.strokeStyle = '#ffffff45'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(270, 485); ctx.lineTo(270, 560); ctx.stroke(); ctx.fillStyle = '#67f5a5'; rr(105, 590, 330, 120, 24); ctx.fill(); drawLayer(sceneIndex, 5, 1); drawLayer(sceneIndex, 6, 1) }
-      if (sc.type === 'formula') { bg('#67f5a5'); drawLayer(sceneIndex, 0, 1); const colors = ['#64e7ff', '#ffd54a', '#67f5a5', '#f7f9ff']; for (let i = 0; i < 4; i++) { let q = easeOut(clamp((p - i * .08) / .18)); ctx.globalAlpha = q; pill(90, 250 + i * 95, 360, 46, colors[i]); ctx.globalAlpha = 1; drawLayer(sceneIndex, 1 + i, q) } drawLayer(sceneIndex, 5, 1); drawLayer(sceneIndex, 6, 1); drawLayer(sceneIndex, 7, 1); drawLayer(sceneIndex, 8, 1) }
-    }
-    function currentSceneIndex() { return hasScenes() ? sceneAt(t).i : 0 }
-    function render() {
-      if (!hasScenes()) {
-        drawEmptyCanvas();
-        $('now').textContent = '00:00';
-        $('total').textContent = '00:00';
-        $('seek').max = 0;
-        $('seek').value = 0;
-        document.querySelectorAll('.scene').forEach(e => e.classList.remove('active'));
-        updateSelectionBox();
-        return;
+      function flashAiPanel() {
+        const panel = document.querySelector(".ai-panel");
+        if (!panel) return;
+        panel.classList.add("flash");
+        clearTimeout(flashAiPanel._timer);
+        flashAiPanel._timer = setTimeout(
+          () => panel.classList.remove("flash"),
+          1200,
+        );
       }
-      const b = sceneAt(t), p = (t - b.a) / (b.b - b.a || 1);
-      drawScene(b.i, p);
-      $('now').textContent = fmt(t);
-      $('total').textContent = fmt(totalDur());
-      $('seek').max = totalDur();
-      $('seek').value = t;
-      document.querySelectorAll('.scene').forEach((e, i) => e.classList.toggle('active', i === b.i));
-      updateSelectionBox();
-    }
-    function rebuild() {
-      const list = $('sceneList');
-      list.innerHTML = '';
-      if (!hasScenes()) {
-        list.innerHTML = '<div class="project-meta" style="padding:18px 0">Project này chưa có scene nào. Hãy để AI tạo khung edit mới từ content plan.</div>';
+      function focusAiPanel() {
+        flashAiPanel();
+        $("aiPrompt").focus();
+        $("aiPrompt").scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      function activateSceneForAi(
+        index,
+        { autoSend = false, useDefaultPrompt = false } = {},
+      ) {
+        if (!hasScenes()) return Promise.resolve();
+        const bb = bounds(),
+          sc = scenes[index];
+        if (!sc || !bb[index]) return;
+        closeInlineEditor(true);
+        t = bb[index].a;
+        selected = null;
         render();
-        return;
+        updateTools();
+        updateModelContext();
+        const prompt = $("aiPrompt").value.trim();
+        if (useDefaultPrompt || !prompt)
+          $("aiPrompt").value = defaultSceneAiPrompt(sc);
+        focusAiPanel();
+        if (autoSend) return sendAiPrompt($("aiPrompt").value, false);
+        setServerState(`Đã chọn Màn ${index + 1} cho AI.`, true);
+        return Promise.resolve();
       }
-      let bs = bounds();
-      scenes.forEach((s, i) => {
-        let d = document.createElement('div');
-        d.className = 'scene';
-        d.dataset.scene = i;
-        d.innerHTML = `<div class="scene-head"><div class="scene-title">${i + 1}. ${s.title}</div><div class="time">${fmt(bs[i].a)} → ${fmt(bs[i].b)}</div></div><div class="row"><label>Duration (giây)</label><input type="number" min="0.5" step="0.5" value="${s.duration}" data-dur="${i}"></div><button class="scene-ai" data-ai="${i}">✨ AI sửa màn này</button>`;
-        d.onclick = e => { if (e.target.matches('input,button')) return; t = bs[i].a; selected = null; closeInlineEditor(); render(); updateTools(); updateModelContext(); setTimeout(() => pullLatestProject('scene-click'), 550) };
-        list.appendChild(d);
+      async function sendAiPrompt(text, whole = false) {
+        text = String(text || "").trim();
+        if (!text && !whole) return;
+        if (!hasScenes() && !whole) {
+          setServerState(
+            "Project này chưa có scene để sửa. Hãy tạo khung edit trước.",
+            false,
+          );
+          return;
+        }
+        const idx = currentSceneIndex(),
+          sc = scenes[idx];
+        const context = whole
+          ? `Hãy review toàn bộ video project hiện tại. Dùng get_video_project trước, sau đó dùng update_scene hoặc update_text_layer để áp dụng các chỉnh sửa cần thiết. QUAN TRỌNG: chỉ trả lời trong chat là KHÔNG đủ — bạn phải thực sự gọi update_scene/update_text_layer cho từng thay đổi. Với project không phải sample, không tái dùng visual style cũ; hãy giữ concept riêng của project và tăng độ chi tiết editor-level cho từng scene.`
+          : `Bạn đang chỉnh Màn ${idx + 1} (${sc.id}) — ${sc.title}. Yêu cầu của tôi: ${text}\n\nHãy dùng MCP tools của Video Editor để áp dụng thay đổi trực tiếp vào đúng scene này. Ưu tiên update_text_layer cho thay đổi chữ/style nhỏ; dùng update_scene khi cần thay duration hoặc nhiều layer. QUAN TRỌNG: chỉ mô tả thay đổi trong câu trả lời chat là KHÔNG đủ — bạn bắt buộc phải gọi tool thật (update_text_layer/update_scene) cho MỌI layer cần đổi, kể cả khi chỉ dịch một chữ, nếu không thay đổi sẽ không được lưu và UI sẽ không cập nhật. Không kéo scene này về visual style của sample project; hãy giữ concept riêng, chi tiết hơn, giống một editor thật.`;
+        const mode = await ensureHost();
+        try {
+          await flushPendingSync();
+          if (mode === "mcp") {
+            const v = projectVersion;
+            await mcpBridge.sendMessage(context);
+            setServerState("Đã gửi prompt · đang chờ AI cập nhật MCP…", true);
+            startAiWatch(v);
+            return;
+          }
+          if (mode === "openai" && host()?.sendFollowUpMessage) {
+            const v = projectVersion;
+            await host().sendFollowUpMessage({
+              prompt: context,
+              scrollToBottom: true,
+            });
+            setServerState("Đã gửi prompt · đang chờ AI cập nhật MCP…", true);
+            startAiWatch(v);
+            return;
+          }
+        } catch (e) {
+          console.error(e);
+          setServerState(
+            "Không gửi được prompt: " + (e?.message || String(e)),
+            false,
+          );
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(context);
+          setServerState(
+            "Standalone: đã copy prompt. Hãy mở app MCP trong cuộc chat.",
+            false,
+          );
+        } catch {
+          setServerState("Standalone: không có ChatGPT host bridge.", false);
+        }
+      }
+      async function initHost() {
+        const mode = await ensureHost();
+        if (mode === "mcp") {
+          setServerState("Đang tải editor…", true);
+          requestHostResize();
+          setTimeout(
+            () =>
+              pullLatestProject("init").catch((e) =>
+                console.warn("initial project sync failed", e),
+              ),
+            80,
+          );
+        } else if (mode === "openai") {
+          const out = host()?.toolOutput;
+          if (out) updateFromHostResult({ structuredContent: out });
+          try {
+            await pullLatestProject("init-openai");
+          } catch (e) {
+            console.warn("initial compatibility sync failed", e);
+          }
+        } else
+          setServerState(
+            "Standalone mode — /editor không phải ChatGPT App widget.",
+            false,
+          );
+        updateModelContext();
+      }
+      window.addEventListener("openai:set_globals", () => {
+        if (host()?.toolOutput)
+          updateFromHostResult({ structuredContent: host().toolOutput });
+        bridgeMode = "window.openai fallback";
+        hostConnected = true;
+        setServerState("Đã kết nối ChatGPT compatibility bridge.", true);
       });
-      list.querySelectorAll('[data-dur]').forEach(el => el.oninput = e => { const i = +e.target.dataset.dur; scenes[i].duration = Math.max(.5, +e.target.value || .5); t = Math.min(t, totalDur() - .001); rebuild(); render(); scheduleSyncSceneDuration(i); updateModelContext() });
-      list.querySelectorAll('[data-ai]').forEach(btn => btn.onclick = e => { e.stopPropagation(); const i = +btn.dataset.ai; activateSceneForAi(i, { autoSend: true, useDefaultPrompt: true }) });
-      render();
-    }
-    function canvasPoint(e) { const r = c.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height } } function boxAt(pt) { for (let i = hitBoxes.length - 1; i >= 0; i--) { const b = hitBoxes[i]; if (pt.x >= b.x && pt.x <= b.x + b.w && pt.y >= b.y && pt.y <= b.y + b.h) return b } return null }
-    function selectBox(b) { if (!b) { selected = null; updateTools(); updateSelectionBox(); updateModelContext(); return } selected = { sceneIndex: b.sceneIndex, layerIndex: b.layerIndex }; updateTools(); updateSelectionBox(); updateModelContext() }
-    function selectedLayer() { return selected ? scenes[selected.sceneIndex]?.layers[selected.layerIndex] : null }
-    function updateTools() { const l = selectedLayer(), tools = $('textTools'); if (!l) { tools.classList.add('disabled'); $('selectedName').textContent = 'Chưa chọn'; return } tools.classList.remove('disabled'); $('selectedName').textContent = l.text.replace(/\n/g, ' / '); $('fontSize').value = l.size; $('fontWeight').value = String(l.weight); $('textAlign').value = l.align; $('textX').value = Math.round(l.x); $('textY').value = Math.round(l.y) }
-    function cssBoxForSelected() { if (!selected) return null; const b = hitBoxes.find(x => x.sceneIndex === selected.sceneIndex && x.layerIndex === selected.layerIndex); if (!b) return null; const r = c.getBoundingClientRect(), sx = r.width / W, sy = r.height / H; return { left: b.x * sx, top: b.y * sy, width: b.w * sx, height: b.h * sy, sx, sy } }
-    function updateSelectionBox() { const el = $('selectionBox'); if (!hasScenes() || !selected || selected.sceneIndex !== currentSceneIndex() || editing) { el.classList.remove('active'); return } const b = cssBoxForSelected(); if (!b) { el.classList.remove('active'); return } el.style.left = b.left + 'px'; el.style.top = b.top + 'px'; el.style.width = b.width + 'px'; el.style.height = b.height + 'px'; el.classList.add('active') }
-    function openInlineEditor() { const l = selectedLayer(); if (!l) return; const b = cssBoxForSelected(); if (!b) return; editing = true; $('canvasWrap').classList.add('editing'); const ed = $('inlineEditor'); ed.textContent = l.text; ed.style.left = b.left + 'px'; ed.style.top = b.top + 'px'; ed.style.width = Math.max(100, b.width) + 'px'; ed.style.minHeight = Math.max(34, b.height) + 'px'; ed.style.fontSize = Math.max(12, l.size * b.sy) + 'px'; ed.style.fontWeight = l.weight; ed.style.textAlign = l.align; ed.style.color = l.color; ed.classList.add('active'); updateSelectionBox(); setTimeout(() => { ed.focus(); const range = document.createRange(); range.selectNodeContents(ed); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range) }, 0) }
-    function closeInlineEditor(commit = true) { const ed = $('inlineEditor'); if (!editing) return; const si = selected?.sceneIndex, li = selected?.layerIndex; if (commit && selectedLayer()) { selectedLayer().text = ed.innerText.replace(/\r/g, ''); } editing = false; ed.classList.remove('active'); $('canvasWrap').classList.remove('editing'); render(); updateTools(); updateModelContext(); if (commit && si != null && li != null) scheduleSyncLayer(si, li) }
-    c.addEventListener('click', e => { if (editing) return; const b = boxAt(canvasPoint(e)); selectBox(b) }); c.addEventListener('dblclick', e => { const b = boxAt(canvasPoint(e)); selectBox(b); if (b) openInlineEditor() }); $('inlineEditor').addEventListener('input', e => { if (selectedLayer()) { selectedLayer().text = e.currentTarget.innerText.replace(/\r/g, ''); render() } }); $('inlineEditor').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); closeInlineEditor(true) } if (e.key === 'Escape') { e.preventDefault(); closeInlineEditor(false) } }); document.addEventListener('mousedown', e => { if (editing && !$('inlineEditor').contains(e.target) && e.target !== c) closeInlineEditor(true) });
-    ['fontSize', 'fontWeight', 'textAlign', 'textX', 'textY'].forEach(id => $(id).addEventListener('input', () => { const l = selectedLayer(); if (!l) return; l.size = +$('fontSize').value || l.size; l.weight = +$('fontWeight').value || l.weight; l.align = $('textAlign').value; l.x = +$('textX').value; l.y = +$('textY').value; render(); updateModelContext(); scheduleSyncLayer(selected.sceneIndex, selected.layerIndex) }));
-    function tick(ts) { if (playing) { if (!last) last = ts; let dt = (ts - last) / 1000; last = ts; t += dt; if (t >= totalDur()) { playing = false; t = totalDur() - .001; $('play').textContent = '▶ Preview'; if (audioEl) audioEl.pause() } render() } requestAnimationFrame(tick) } requestAnimationFrame(tick);
-    $('play').onclick = () => { if (!hasScenes()) return; closeInlineEditor(true); playing = !playing; $('play').textContent = playing ? '❚❚ Pause' : '▶ Preview'; last = 0; if (audioEl) { audioEl.currentTime = t; if (playing) audioEl.play(); else audioEl.pause() } }; $('seek').oninput = e => { if (!hasScenes()) return; closeInlineEditor(true); t = +e.target.value; selected = null; last = 0; if (audioEl) audioEl.currentTime = t; render(); updateTools(); updateModelContext() }; $('prev').onclick = () => { if (!hasScenes()) return; closeInlineEditor(true); let b = sceneAt(t), bb = bounds(); t = bb[Math.max(0, b.i - 1)].a; selected = null; render(); updateTools(); updateModelContext() }; $('next').onclick = () => { if (!hasScenes()) return; closeInlineEditor(true); let b = sceneAt(t), bb = bounds(); t = bb[Math.min(bb.length - 1, b.i + 1)].a; selected = null; render(); updateTools(); updateModelContext() }; $('reset').onclick = async () => { closeInlineEditor(false); const mode = await ensureHost(); if (mode) { await callHostTool('reset_video_project', {}); } else { scenes = JSON.parse(JSON.stringify(baseScenes)); t = 0; selected = null; rebuild(); updateTools(); updateModelContext() } };
-    $('audioFile').onchange = e => { if (audioUrl) URL.revokeObjectURL(audioUrl); let f = e.target.files[0]; if (!f) { audioEl = null; return } audioUrl = URL.createObjectURL(f); audioEl = new Audio(audioUrl); $('status').textContent = 'Đã nạp voice-over: ' + f.name };
-    async function recordWebM() { return new Promise(async (resolve, reject) => { closeInlineEditor(true); selected = null; updateSelectionBox(); const fps = 30, stream = c.captureStream(fps); let ac = null, src = null, dest = null; if (audioEl) { ac = new AudioContext(); src = ac.createMediaElementSource(audioEl); dest = ac.createMediaStreamDestination(); src.connect(dest); src.connect(ac.destination); dest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr)); await ac.resume() } let mime = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find(x => MediaRecorder.isTypeSupported(x)) || '', rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 8000000 } : undefined), chunks = []; rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data) }; rec.onerror = reject; rec.onstop = () => { if (ac) ac.close(); resolve(new Blob(chunks, { type: 'video/webm' })) }; const oldT = t, oldPlaying = playing; playing = false; t = 0; last = 0; if (audioEl) { audioEl.currentTime = 0; await audioEl.play().catch(() => { }) } $('status').textContent = 'Đang render video realtime…'; rec.start(1000); const started = performance.now(); function step(now) { t = (now - started) / 1000; render(); if (t < totalDur()) requestAnimationFrame(step); else { t = totalDur() - .001; render(); if (audioEl) audioEl.pause(); rec.stop(); t = oldT; playing = oldPlaying; render() } } requestAnimationFrame(step) }) }
-    function ensureFfmpegLib() { if (window.FFmpeg) return Promise.resolve(); return new Promise((resolve, reject) => { const s = document.createElement('script'); s.src = 'https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js'; s.onload = resolve; s.onerror = () => reject(new Error('Không tải được ffmpeg.wasm')); document.head.appendChild(s) }) } function downloadBlob(blob, name) { let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000) } $('webm').onclick = async () => { try { $('webm').disabled = true; let b = await recordWebM(); downloadBlob(b, 'social_algorithm_short.webm'); $('status').textContent = 'Đã xuất WebM.' } catch (e) { $('status').textContent = 'Lỗi export: ' + e.message } finally { $('webm').disabled = false } }; $('mp4').onclick = async () => { try { $('mp4').disabled = true; let webm = await recordWebM(); $('status').textContent = 'Đang chuyển WebM → MP4…'; await ensureFfmpegLib(); if (!window.FFmpeg) throw new Error('Không tải được ffmpeg.wasm'); const { createFFmpeg, fetchFile } = FFmpeg, ffmpeg = createFFmpeg({ log: false, corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js' }); await ffmpeg.load(); ffmpeg.FS('writeFile', 'in.webm', await fetchFile(webm)); await ffmpeg.run('-i', 'in.webm', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', 'faststart', '-preset', 'veryfast', '-c:a', 'aac', '-b:a', '160k', 'out.mp4'); const out = ffmpeg.FS('readFile', 'out.mp4'); downloadBlob(new Blob([out.buffer], { type: 'video/mp4' }), 'social_algorithm_short.mp4'); $('status').textContent = 'Đã xuất MP4.' } catch (e) { $('status').textContent = 'MP4 lỗi: ' + e.message + ' — dùng WebM nếu cần.' } finally { $('mp4').disabled = false } };
-    document.querySelectorAll('[data-prompt]').forEach(btn => btn.onclick = () => { $('aiPrompt').value = btn.dataset.prompt; $('aiPrompt').focus() });
-    $('sendAi').onclick = () => sendAiPrompt($('aiPrompt').value, false);
-    $('copyAi').onclick = async () => { const idx = currentSceneIndex(), sc = scenes[idx], txt = `Màn ${idx + 1} (${sc.id}) ${sc.title}: ${$('aiPrompt').value}`; try { await navigator.clipboard.writeText(txt); setServerState('Đã copy prompt.', true) } catch { setServerState('Không copy được prompt.', false) } };
-    $('pullLatest').onclick = () => pullLatestProject('button');
-    $('askWhole').onclick = () => sendAiPrompt('', true);
-    $('fullscreen').onclick = async () => { try { const mode = await ensureHost(); if (mode === 'mcp') await mcpBridge.requestDisplayMode('fullscreen'); else if (mode === 'openai' && host()?.requestDisplayMode) await host().requestDisplayMode({ mode: 'fullscreen' }); else setServerState('Fullscreen chỉ có khi widget được ChatGPT render từ MCP tool.', false) } catch (e) { setServerState('Không mở được fullscreen: ' + (e?.message || e), false) } };
-    $('newProject').onclick=()=>showStudioView('createView');
-    $('backProjects').onclick=()=>{routeOnApply=false;renderProjectList()};
-    $('analyzeScript').onclick=createProjectFlow;
-    $('savePlan').onclick=async()=>{await persistPlan();$('savePlan').textContent='Đã lưu';setTimeout(()=>$('savePlan').textContent='Lưu nháp',1200)};
-    $('confirmPlan').onclick=async()=>{
-      await persistPlan(); const plan=activeProject.workflow.contentPlan, mode=await ensureHost();
-      if(!mode){alert('Nội dung đã lưu. Mở project trong ChatGPT MCP để AI tạo khung edit.');return}
-      $('confirmPlan').disabled=true;$('confirmPlan').textContent='Đang nhờ ChatGPT tạo…';
-      updateWorkflowCard('pending', 'Đang tạo khung edit', 'ChatGPT đang chuyển content plan đã xác nhận thành scenes/layers hoàn chỉnh và ghi ngược lại vào JSON project.');
-      const prompt=`Use only the Video Editor app tools.
+      function totalDur() {
+        return scenes.reduce((a, s) => a + Math.max(0.2, +s.duration || 0), 0);
+      }
+      function fmt(x) {
+        x = Math.max(0, x);
+        let m = Math.floor(x / 60),
+          s = Math.floor(x % 60);
+        return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+      }
+      function bounds() {
+        let acc = 0;
+        return scenes.map((s, i) => {
+          let a = acc,
+            b = acc + (+s.duration || 0);
+          acc = b;
+          return { i, a, b };
+        });
+      }
+      function sceneAt(time) {
+        let b = bounds();
+        return b.find((x) => time >= x.a && time < x.b) || b[b.length - 1];
+      }
+      function clamp(x, a = 0, b = 1) {
+        return Math.max(a, Math.min(b, x));
+      }
+      function easeOut(x) {
+        return 1 - Math.pow(1 - clamp(x), 3);
+      }
+      function rr(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, r);
+      }
+      function fitFont(text, maxW, size, weight) {
+        let s = size;
+        ctx.font = `${weight} ${s}px "Be Vietnam Pro",sans-serif`;
+        while (ctx.measureText(text).width > maxW && s > 12) {
+          s--;
+          ctx.font = `${weight} ${s}px "Be Vietnam Pro",sans-serif`;
+        }
+        return s;
+      }
+      function drawLayer(sceneIndex, layerIndex, alpha = 1) {
+        const l = scenes[sceneIndex]?.layers?.[layerIndex];
+        if (!l) return;
+        const lines = String(l.text).split("\n");
+        let size = fitFont(
+          lines.reduce((a, b) => (a.length > b.length ? a : b), ""),
+          l.maxWidth || 460,
+          +l.size || 30,
+          +l.weight || 700,
+        );
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.font = `${l.weight} ${size}px "Be Vietnam Pro",sans-serif`;
+        ctx.fillStyle = l.color;
+        ctx.textBaseline = "middle";
+        ctx.textAlign = l.align || "center";
+        const lineH = size * 1.18,
+          totalH = lineH * lines.length;
+        let maxW = 0;
+        for (const line of lines)
+          maxW = Math.max(maxW, ctx.measureText(line).width);
+        lines.forEach((line, i) =>
+          ctx.fillText(line, l.x, l.y + (i - (lines.length - 1) / 2) * lineH),
+        );
+        ctx.restore();
+        let left =
+          l.align === "left"
+            ? l.x
+            : l.align === "right"
+              ? l.x - maxW
+              : l.x - maxW / 2;
+        hitBoxes.push({
+          sceneIndex,
+          layerIndex,
+          x: left - 10,
+          y: l.y - totalH / 2 - 8,
+          w: maxW + 20,
+          h: totalH + 16,
+        });
+      }
+      function drawLayerWithOffset(
+        sceneIndex,
+        layerIndex,
+        alpha = 1,
+        offsetY = 0,
+        scale = 1,
+      ) {
+        const l = scenes[sceneIndex]?.layers?.[layerIndex];
+        if (!l) return;
+        const lines = String(l.text).split("\n");
+        let size = fitFont(
+          lines.reduce((a, b) => (a.length > b.length ? a : b), ""),
+          l.maxWidth || 460,
+          +l.size || 30,
+          +l.weight || 700,
+        );
+        size = Math.max(12, Math.round(size * scale));
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.font = `${l.weight} ${size}px "Be Vietnam Pro",sans-serif`;
+        ctx.fillStyle = l.color;
+        ctx.textBaseline = "middle";
+        ctx.textAlign = l.align || "center";
+        const lineH = size * 1.18,
+          totalH = lineH * lines.length;
+        let maxW = 0;
+        for (const line of lines)
+          maxW = Math.max(maxW, ctx.measureText(line).width);
+        lines.forEach((line, i) =>
+          ctx.fillText(
+            line,
+            l.x,
+            l.y + offsetY + (i - (lines.length - 1) / 2) * lineH,
+          ),
+        );
+        ctx.restore();
+        let left =
+          l.align === "left"
+            ? l.x
+            : l.align === "right"
+              ? l.x - maxW
+              : l.x - maxW / 2;
+        hitBoxes.push({
+          sceneIndex,
+          layerIndex,
+          x: left - 10,
+          y: l.y + offsetY - totalH / 2 - 8,
+          w: maxW + 20,
+          h: totalH + 16,
+        });
+      }
+      function bg(accent = "#64e7ff") {
+        ctx.fillStyle = "#070a11";
+        ctx.fillRect(0, 0, W, H);
+        let g = ctx.createRadialGradient(
+          W * 0.15,
+          H * 0.15,
+          20,
+          W * 0.15,
+          H * 0.15,
+          450,
+        );
+        g.addColorStop(0, accent + "24");
+        g.addColorStop(1, "#00000000");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+        ctx.strokeStyle = "#ffffff09";
+        for (let y = 110; y < H; y += 70) {
+          ctx.beginPath();
+          ctx.moveTo(28, y);
+          ctx.lineTo(W - 28, y);
+          ctx.stroke();
+        }
+        for (let x = 48; x < W; x += 74) {
+          ctx.beginPath();
+          ctx.moveTo(x, 100);
+          ctx.lineTo(x, H - 50);
+          ctx.stroke();
+        }
+        ctx.fillStyle = "#8792a8";
+        ctx.font = '600 17px "Be Vietnam Pro"';
+        ctx.textAlign = "left";
+        ctx.fillText("SOCIAL ALGORITHM", 28, 48);
+        ctx.textAlign = "right";
+        ctx.fillText("9:16", W - 28, 48);
+      }
+      function pill(x, y, w, h, color) {
+        ctx.fillStyle = color + "20";
+        ctx.strokeStyle = color + "70";
+        ctx.lineWidth = 2;
+        rr(x, y, w, h, h / 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      function paletteForScene(sc = {}) {
+        const accent =
+          sc?.style?.accent ||
+          {
+            hook: "#64e7ff",
+            first: "#ffd54a",
+            signals: "#67f5a5",
+            ladder: "#64e7ff",
+            stop: "#ff6b7a",
+            goal: "#ffd54a",
+            niche: "#67f5a5",
+            formula: "#64e7ff",
+            quote: "#9b8cff",
+            data: "#5eead4",
+          }[sc.type] ||
+          "#64e7ff";
+        const background = sc?.style?.background || "#0a0f18";
+        return { accent, background };
+      }
+      function drawEmptyCanvas() {
+        hitBoxes = [];
+        ctx.clearRect(0, 0, W, H);
+        const g = ctx.createLinearGradient(0, 0, W, H);
+        g.addColorStop(0, "#08101b");
+        g.addColorStop(1, "#05070b");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+        ctx.strokeStyle = "#243147";
+        ctx.lineWidth = 2;
+        rr(40, 110, 460, 740, 30);
+        ctx.stroke();
+        ctx.fillStyle = "#8ea0bb";
+        ctx.font = '700 22px "Be Vietnam Pro"';
+        ctx.textAlign = "center";
+        ctx.fillText("Project này chưa có khung edit", 270, 300);
+        ctx.fillStyle = "#d6e0f0";
+        ctx.font = '800 42px "Be Vietnam Pro"';
+        ctx.fillText("Xác nhận content plan", 270, 392);
+        ctx.fillText("để AI dựng canvas mới", 270, 446);
+        ctx.fillStyle = "#6f809c";
+        ctx.font = '500 18px "Be Vietnam Pro"';
+        ctx.fillText(
+          "Không dùng animation mặc định của sample project.",
+          270,
+          560,
+        );
+        ctx.fillText(
+          "Scene mới sẽ render theo concept riêng của project.",
+          270,
+          594,
+        );
+      }
+      function drawGenericScene(sceneIndex, p) {
+        const sc = scenes[sceneIndex];
+        if (!sc) return;
+        const { accent, background } = paletteForScene(sc);
+        const layout = sc?.style?.layout || "focus";
+        const kicker = sc?.style?.kicker || sc.title || sc.type || "SCENE";
+        hitBoxes = [];
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = background;
+        ctx.fillRect(0, 0, W, H);
+        const glow = ctx.createRadialGradient(
+          W * 0.2,
+          H * 0.18,
+          20,
+          W * 0.2,
+          H * 0.18,
+          520,
+        );
+        glow.addColorStop(0, accent + "35");
+        glow.addColorStop(1, "#00000000");
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, W, H);
+        ctx.strokeStyle = "#ffffff0c";
+        for (let y = 100; y < H; y += 86) {
+          ctx.beginPath();
+          ctx.moveTo(26, y);
+          ctx.lineTo(W - 26, y);
+          ctx.stroke();
+        }
+        pill(36, 42, Math.min(300, 110 + kicker.length * 8), 42, accent);
+        ctx.fillStyle = accent;
+        ctx.font = '800 17px "Be Vietnam Pro"';
+        ctx.textAlign = "left";
+        ctx.fillText(kicker.toUpperCase(), 58, 68);
+        ctx.fillStyle = "#91a3be";
+        ctx.font = '600 14px "Be Vietnam Pro"';
+        ctx.textAlign = "right";
+        ctx.fillText(
+          (sc?.style?.motion || "custom motion").toUpperCase(),
+          W - 36,
+          68,
+        );
+        ctx.fillStyle = "#0d1522";
+        if (layout === "split" || layout === "comparison") {
+          rr(36, 180, 212, 570, 26);
+          ctx.fill();
+          rr(292, 180, 212, 570, 26);
+          ctx.fill();
+        } else if (layout === "timeline" || layout === "flow") {
+          rr(88, 176, 364, 612, 28);
+          ctx.fill();
+          ctx.strokeStyle = accent + "88";
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(270, 244);
+          ctx.lineTo(270, 706);
+          ctx.stroke();
+        } else if (layout === "card-grid") {
+          [
+            [36, 188],
+            [282, 188],
+            [36, 476],
+            [282, 476],
+          ].forEach(([x, y]) => {
+            rr(x, y, 222, 244, 24);
+            ctx.fill();
+          });
+        } else if (layout === "quote") {
+          rr(44, 210, 452, 500, 28);
+          ctx.fill();
+          ctx.fillStyle = accent;
+          ctx.font = '900 110px "Be Vietnam Pro"';
+          ctx.textAlign = "left";
+          ctx.fillText("“", 70, 295);
+          ctx.fillStyle = "#0d1522";
+        } else if (layout === "data") {
+          rr(44, 190, 452, 540, 28);
+          ctx.fill();
+          [0, 1, 2].forEach((i) => {
+            ctx.fillStyle = "#192235";
+            rr(84, 296 + i * 118, 372, 18, 9);
+            ctx.fill();
+          });
+          ctx.fillStyle = "#0d1522";
+        } else {
+          rr(44, 176, 452, 610, 30);
+          ctx.fill();
+        }
+        if (sc?.style?.notes) {
+          ctx.fillStyle = "#aebbd1";
+          ctx.font = '500 13px "Be Vietnam Pro"';
+          ctx.textAlign = "center";
+          ctx.fillText(sc.style.notes, 270, 900);
+        }
+        (sc.layers || []).forEach((_, i) => {
+          const layerIn = easeOut(clamp((p - i * 0.05) / 0.18));
+          drawLayerWithOffset(
+            sceneIndex,
+            i,
+            0.28 + 0.72 * layerIn,
+            24 * (1 - layerIn),
+            0.96 + 0.04 * layerIn,
+          );
+        });
+      }
+      function drawScene(sceneIndex, p) {
+        hitBoxes = [];
+        const sc = scenes[sceneIndex],
+          intro = easeOut(clamp(p / 0.18));
+        ctx.clearRect(0, 0, W, H);
+        if (!isSampleProject()) {
+          drawGenericScene(sceneIndex, p);
+          return;
+        }
+        if (sc.type === "hook") {
+          bg("#64e7ff");
+          pill(145, 132, 250, 46, "#ffd54a");
+          ctx.fillStyle = "#ffd54a";
+          ctx.font = '700 19px "Be Vietnam Pro"';
+          ctx.textAlign = "center";
+          ctx.fillText("OPEN LOOP", 270, 155);
+          drawLayer(sceneIndex, 0, intro);
+          drawLayer(sceneIndex, 1, intro);
+          drawLayer(sceneIndex, 2, intro);
+        }
+        if (sc.type === "first") {
+          bg("#ffd54a");
+          drawLayer(sceneIndex, 0, intro);
+          let pop = easeOut(clamp((p - 0.18) / 0.22));
+          ctx.save();
+          ctx.translate(270, 430);
+          ctx.scale(0.72 + 0.28 * pop, 0.72 + 0.28 * pop);
+          ctx.translate(-270, -430);
+          drawLayer(sceneIndex, 1, 1);
+          ctx.restore();
+          pill(125, 525, 290, 46, "#ffd54a");
+          drawLayer(sceneIndex, 2, 1);
+          drawLayer(sceneIndex, 3, 1);
+          drawLayer(sceneIndex, 4, 1);
+          drawLayer(sceneIndex, 5, 1);
+        }
+        if (sc.type === "signals") {
+          bg("#67f5a5");
+          drawLayer(sceneIndex, 0, 1);
+          drawLayer(sceneIndex, 1, 1);
+          const icons = ["⏱", "♥", "💬", "↗"];
+          for (let i = 0; i < 4; i++) {
+            let q = easeOut(clamp((p - i * 0.08) / 0.2)),
+              y = 330 + i * 105;
+            ctx.globalAlpha = q;
+            ctx.fillStyle = "#111827";
+            rr(55, y, 430, 78, 18);
+            ctx.fill();
+            ctx.strokeStyle = "#2f3c51";
+            ctx.stroke();
+            ctx.fillStyle = i === 0 ? "#67f5a5" : "#f7f9ff";
+            ctx.font = '700 29px "Be Vietnam Pro"';
+            ctx.textAlign = "left";
+            ctx.fillText(icons[i], 80, y + 50);
+            ctx.fillStyle = "#273347";
+            rr(330, y + 30, 120, 16, 8);
+            ctx.fill();
+            ctx.fillStyle = "#67f5a5";
+            rr(330, y + 30, 120 * q, 16, 8);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            drawLayer(sceneIndex, 2 + i, q);
+          }
+        }
+        if (sc.type === "ladder") {
+          bg("#64e7ff");
+          drawLayer(sceneIndex, 0, 1);
+          drawLayer(sceneIndex, 1, 1);
+          for (let i = 0; i < 4; i++) {
+            let q = easeOut(clamp((p - i * 0.17) / 0.18));
+            ctx.globalAlpha = 0.3 + 0.7 * q;
+            drawLayer(sceneIndex, 2 + i, 1);
+            if (i < 3) {
+              let y = [330, 450, 570][i];
+              ctx.strokeStyle = "#ffffff55";
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.moveTo(270, y + 34);
+              ctx.lineTo(270, y + 80);
+              ctx.stroke();
+              ctx.fillStyle = "#fff";
+              ctx.beginPath();
+              ctx.moveTo(261, y + 72);
+              ctx.lineTo(279, y + 72);
+              ctx.lineTo(270, y + 84);
+              ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+          }
+          drawLayer(sceneIndex, 6, 1);
+        }
+        if (sc.type === "stop") {
+          bg("#ff6b7a");
+          drawLayer(sceneIndex, 0, intro);
+          drawLayer(sceneIndex, 1, intro);
+          ctx.fillStyle = "#ff6b7a";
+          rr(65, 430, 410, 130, 24);
+          ctx.fill();
+          drawLayer(sceneIndex, 2, 1);
+          drawLayer(sceneIndex, 3, 1);
+          drawLayer(sceneIndex, 4, 1);
+        }
+        if (sc.type === "goal") {
+          bg("#ffd54a");
+          drawLayer(sceneIndex, 0, 1);
+          let q = easeOut(clamp((p - 0.12) / 0.25));
+          ctx.fillStyle = "#121827";
+          rr(45, 330, 450, 240, 28);
+          ctx.fill();
+          ctx.strokeStyle = "#ffd54a80";
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          ctx.fillStyle = "#ffd54a";
+          ctx.font = '800 95px "Be Vietnam Pro"';
+          ctx.textAlign = "center";
+          ctx.fillText(Math.floor(12 + q * 48) + "m", 270, 440);
+          drawLayer(sceneIndex, 1, 1);
+          drawLayer(sceneIndex, 2, 1);
+          drawLayer(sceneIndex, 3, 1);
+        }
+        if (sc.type === "niche") {
+          bg("#64e7ff");
+          drawLayer(sceneIndex, 0, 1);
+          drawLayer(sceneIndex, 1, 1);
+          const emoji = ["😂", "⚽", "📚"];
+          for (let i = 0; i < 3; i++) {
+            let x = 62 + i * 150;
+            ctx.fillStyle = "#121827";
+            rr(x, 340, 116, 120, 20);
+            ctx.fill();
+            ctx.fillStyle = "#ff6b7a";
+            ctx.font = '800 25px "Be Vietnam Pro"';
+            ctx.textAlign = "center";
+            ctx.fillText("×", x + 58, 370);
+            ctx.fillStyle = "#fff";
+            ctx.font = "34px sans-serif";
+            ctx.fillText(emoji[i], x + 58, 414);
+            drawLayer(sceneIndex, 2 + i, 1);
+          }
+          ctx.strokeStyle = "#ffffff45";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(270, 485);
+          ctx.lineTo(270, 560);
+          ctx.stroke();
+          ctx.fillStyle = "#67f5a5";
+          rr(105, 590, 330, 120, 24);
+          ctx.fill();
+          drawLayer(sceneIndex, 5, 1);
+          drawLayer(sceneIndex, 6, 1);
+        }
+        if (sc.type === "formula") {
+          bg("#67f5a5");
+          drawLayer(sceneIndex, 0, 1);
+          const colors = ["#64e7ff", "#ffd54a", "#67f5a5", "#f7f9ff"];
+          for (let i = 0; i < 4; i++) {
+            let q = easeOut(clamp((p - i * 0.08) / 0.18));
+            ctx.globalAlpha = q;
+            pill(90, 250 + i * 95, 360, 46, colors[i]);
+            ctx.globalAlpha = 1;
+            drawLayer(sceneIndex, 1 + i, q);
+          }
+          drawLayer(sceneIndex, 5, 1);
+          drawLayer(sceneIndex, 6, 1);
+          drawLayer(sceneIndex, 7, 1);
+          drawLayer(sceneIndex, 8, 1);
+        }
+      }
+      function currentSceneIndex() {
+        return hasScenes() ? sceneAt(t).i : 0;
+      }
+      function render() {
+        if (!hasScenes()) {
+          drawEmptyCanvas();
+          $("now").textContent = "00:00";
+          $("total").textContent = "00:00";
+          $("seek").max = 0;
+          $("seek").value = 0;
+          document
+            .querySelectorAll(".scene")
+            .forEach((e) => e.classList.remove("active"));
+          updateSelectionBox();
+          return;
+        }
+        const b = sceneAt(t),
+          p = (t - b.a) / (b.b - b.a || 1);
+        drawScene(b.i, p);
+        $("now").textContent = fmt(t);
+        $("total").textContent = fmt(totalDur());
+        $("seek").max = totalDur();
+        $("seek").value = t;
+        document
+          .querySelectorAll(".scene")
+          .forEach((e, i) => e.classList.toggle("active", i === b.i));
+        updateSelectionBox();
+      }
+      function rebuild() {
+        const list = $("sceneList");
+        list.innerHTML = "";
+        if (!hasScenes()) {
+          list.innerHTML =
+            '<div class="project-meta" style="padding:18px 0">Project này chưa có scene nào. Hãy để AI tạo khung edit mới từ content plan.</div>';
+          render();
+          return;
+        }
+        let bs = bounds();
+        scenes.forEach((s, i) => {
+          let d = document.createElement("div");
+          d.className = "scene";
+          d.dataset.scene = i;
+          d.innerHTML = `<div class="scene-head"><div class="scene-title">${i + 1}. ${s.title}</div><div class="time">${fmt(bs[i].a)} → ${fmt(bs[i].b)}</div></div><div class="row"><label>Duration (giây)</label><input type="number" min="0.5" step="0.5" value="${s.duration}" data-dur="${i}"></div><button class="scene-ai" data-ai="${i}">✨ AI sửa màn này</button>`;
+          d.onclick = (e) => {
+            if (e.target.matches("input,button")) return;
+            t = bs[i].a;
+            selected = null;
+            closeInlineEditor();
+            render();
+            updateTools();
+            updateModelContext();
+            setTimeout(() => pullLatestProject("scene-click"), 550);
+          };
+          list.appendChild(d);
+        });
+        list.querySelectorAll("[data-dur]").forEach(
+          (el) =>
+            (el.oninput = (e) => {
+              const i = +e.target.dataset.dur;
+              scenes[i].duration = Math.max(0.5, +e.target.value || 0.5);
+              t = Math.min(t, totalDur() - 0.001);
+              rebuild();
+              render();
+              scheduleSyncSceneDuration(i);
+              updateModelContext();
+            }),
+        );
+        list.querySelectorAll("[data-ai]").forEach(
+          (btn) =>
+            (btn.onclick = (e) => {
+              e.stopPropagation();
+              const i = +btn.dataset.ai;
+              activateSceneForAi(i, { autoSend: true, useDefaultPrompt: true });
+            }),
+        );
+        render();
+      }
+      function canvasPoint(e) {
+        const r = c.getBoundingClientRect();
+        return {
+          x: ((e.clientX - r.left) * W) / r.width,
+          y: ((e.clientY - r.top) * H) / r.height,
+        };
+      }
+      function boxAt(pt) {
+        for (let i = hitBoxes.length - 1; i >= 0; i--) {
+          const b = hitBoxes[i];
+          if (
+            pt.x >= b.x &&
+            pt.x <= b.x + b.w &&
+            pt.y >= b.y &&
+            pt.y <= b.y + b.h
+          )
+            return b;
+        }
+        return null;
+      }
+      function selectBox(b) {
+        if (!b) {
+          selected = null;
+          updateTools();
+          updateSelectionBox();
+          updateModelContext();
+          return;
+        }
+        selected = { sceneIndex: b.sceneIndex, layerIndex: b.layerIndex };
+        updateTools();
+        updateSelectionBox();
+        updateModelContext();
+      }
+      function selectedLayer() {
+        return selected
+          ? scenes[selected.sceneIndex]?.layers[selected.layerIndex]
+          : null;
+      }
+      function updateTools() {
+        const l = selectedLayer(),
+          tools = $("textTools");
+        if (!l) {
+          tools.classList.add("disabled");
+          $("selectedName").textContent = "Chưa chọn";
+          return;
+        }
+        tools.classList.remove("disabled");
+        $("selectedName").textContent = l.text.replace(/\n/g, " / ");
+        $("fontSize").value = l.size;
+        $("fontWeight").value = String(l.weight);
+        $("textAlign").value = l.align;
+        $("textX").value = Math.round(l.x);
+        $("textY").value = Math.round(l.y);
+      }
+      function cssBoxForSelected() {
+        if (!selected) return null;
+        const b = hitBoxes.find(
+          (x) =>
+            x.sceneIndex === selected.sceneIndex &&
+            x.layerIndex === selected.layerIndex,
+        );
+        if (!b) return null;
+        const r = c.getBoundingClientRect(),
+          sx = r.width / W,
+          sy = r.height / H;
+        return {
+          left: b.x * sx,
+          top: b.y * sy,
+          width: b.w * sx,
+          height: b.h * sy,
+          sx,
+          sy,
+        };
+      }
+      function updateSelectionBox() {
+        const el = $("selectionBox");
+        if (
+          !hasScenes() ||
+          !selected ||
+          selected.sceneIndex !== currentSceneIndex() ||
+          editing
+        ) {
+          el.classList.remove("active");
+          return;
+        }
+        const b = cssBoxForSelected();
+        if (!b) {
+          el.classList.remove("active");
+          return;
+        }
+        el.style.left = b.left + "px";
+        el.style.top = b.top + "px";
+        el.style.width = b.width + "px";
+        el.style.height = b.height + "px";
+        el.classList.add("active");
+      }
+      function openInlineEditor() {
+        const l = selectedLayer();
+        if (!l) return;
+        const b = cssBoxForSelected();
+        if (!b) return;
+        editing = true;
+        $("canvasWrap").classList.add("editing");
+        const ed = $("inlineEditor");
+        ed.textContent = l.text;
+        ed.style.left = b.left + "px";
+        ed.style.top = b.top + "px";
+        ed.style.width = Math.max(100, b.width) + "px";
+        ed.style.minHeight = Math.max(34, b.height) + "px";
+        ed.style.fontSize = Math.max(12, l.size * b.sy) + "px";
+        ed.style.fontWeight = l.weight;
+        ed.style.textAlign = l.align;
+        ed.style.color = l.color;
+        ed.classList.add("active");
+        updateSelectionBox();
+        setTimeout(() => {
+          ed.focus();
+          const range = document.createRange();
+          range.selectNodeContents(ed);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }, 0);
+      }
+      function closeInlineEditor(commit = true) {
+        const ed = $("inlineEditor");
+        if (!editing) return;
+        const si = selected?.sceneIndex,
+          li = selected?.layerIndex;
+        if (commit && selectedLayer()) {
+          selectedLayer().text = ed.innerText.replace(/\r/g, "");
+        }
+        editing = false;
+        ed.classList.remove("active");
+        $("canvasWrap").classList.remove("editing");
+        render();
+        updateTools();
+        updateModelContext();
+        if (commit && si != null && li != null) scheduleSyncLayer(si, li);
+      }
+      c.addEventListener("click", (e) => {
+        if (editing) return;
+        const b = boxAt(canvasPoint(e));
+        selectBox(b);
+      });
+      c.addEventListener("dblclick", (e) => {
+        const b = boxAt(canvasPoint(e));
+        selectBox(b);
+        if (b) openInlineEditor();
+      });
+      $("inlineEditor").addEventListener("input", (e) => {
+        if (selectedLayer()) {
+          selectedLayer().text = e.currentTarget.innerText.replace(/\r/g, "");
+          render();
+        }
+      });
+      $("inlineEditor").addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          closeInlineEditor(true);
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          closeInlineEditor(false);
+        }
+      });
+      document.addEventListener("mousedown", (e) => {
+        if (editing && !$("inlineEditor").contains(e.target) && e.target !== c)
+          closeInlineEditor(true);
+      });
+      ["fontSize", "fontWeight", "textAlign", "textX", "textY"].forEach((id) =>
+        $(id).addEventListener("input", () => {
+          const l = selectedLayer();
+          if (!l) return;
+          l.size = +$("fontSize").value || l.size;
+          l.weight = +$("fontWeight").value || l.weight;
+          l.align = $("textAlign").value;
+          l.x = +$("textX").value;
+          l.y = +$("textY").value;
+          render();
+          updateModelContext();
+          scheduleSyncLayer(selected.sceneIndex, selected.layerIndex);
+        }),
+      );
+      function tick(ts) {
+        if (playing) {
+          if (!last) last = ts;
+          let dt = (ts - last) / 1000;
+          last = ts;
+          t += dt;
+          if (t >= totalDur()) {
+            playing = false;
+            t = totalDur() - 0.001;
+            $("play").textContent = "▶ Preview";
+            if (audioEl) audioEl.pause();
+          }
+          render();
+        }
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+      $("play").onclick = () => {
+        if (!hasScenes()) return;
+        closeInlineEditor(true);
+        playing = !playing;
+        $("play").textContent = playing ? "❚❚ Pause" : "▶ Preview";
+        last = 0;
+        if (audioEl) {
+          audioEl.currentTime = t;
+          if (playing) audioEl.play();
+          else audioEl.pause();
+        }
+      };
+      $("seek").oninput = (e) => {
+        if (!hasScenes()) return;
+        closeInlineEditor(true);
+        t = +e.target.value;
+        selected = null;
+        last = 0;
+        if (audioEl) audioEl.currentTime = t;
+        render();
+        updateTools();
+        updateModelContext();
+      };
+      $("prev").onclick = () => {
+        if (!hasScenes()) return;
+        closeInlineEditor(true);
+        let b = sceneAt(t),
+          bb = bounds();
+        t = bb[Math.max(0, b.i - 1)].a;
+        selected = null;
+        render();
+        updateTools();
+        updateModelContext();
+      };
+      $("next").onclick = () => {
+        if (!hasScenes()) return;
+        closeInlineEditor(true);
+        let b = sceneAt(t),
+          bb = bounds();
+        t = bb[Math.min(bb.length - 1, b.i + 1)].a;
+        selected = null;
+        render();
+        updateTools();
+        updateModelContext();
+      };
+      $("reset").onclick = async () => {
+        closeInlineEditor(false);
+        const mode = await ensureHost();
+        if (mode) {
+          await callHostTool("reset_video_project", {});
+        } else {
+          scenes = JSON.parse(JSON.stringify(baseScenes));
+          t = 0;
+          selected = null;
+          rebuild();
+          updateTools();
+          updateModelContext();
+        }
+      };
+      $("audioFile").onchange = (e) => {
+        if (audioUrl) URL.revokeObjectURL(audioUrl);
+        let f = e.target.files[0];
+        if (!f) {
+          audioEl = null;
+          return;
+        }
+        audioUrl = URL.createObjectURL(f);
+        audioEl = new Audio(audioUrl);
+        $("status").textContent = "Đã nạp voice-over: " + f.name;
+      };
+      async function recordWebM() {
+        return new Promise(async (resolve, reject) => {
+          closeInlineEditor(true);
+          selected = null;
+          updateSelectionBox();
+          const fps = 30,
+            stream = c.captureStream(fps);
+          let ac = null,
+            src = null,
+            dest = null;
+          if (audioEl) {
+            ac = new AudioContext();
+            src = ac.createMediaElementSource(audioEl);
+            dest = ac.createMediaStreamDestination();
+            src.connect(dest);
+            src.connect(ac.destination);
+            dest.stream.getAudioTracks().forEach((tr) => stream.addTrack(tr));
+            await ac.resume();
+          }
+          let mime =
+              [
+                "video/webm;codecs=vp9,opus",
+                "video/webm;codecs=vp8,opus",
+                "video/webm",
+              ].find((x) => MediaRecorder.isTypeSupported(x)) || "",
+            rec = new MediaRecorder(
+              stream,
+              mime
+                ? { mimeType: mime, videoBitsPerSecond: 8000000 }
+                : undefined,
+            ),
+            chunks = [];
+          rec.ondataavailable = (e) => {
+            if (e.data.size) chunks.push(e.data);
+          };
+          rec.onerror = reject;
+          rec.onstop = () => {
+            if (ac) ac.close();
+            resolve(new Blob(chunks, { type: "video/webm" }));
+          };
+          const oldT = t,
+            oldPlaying = playing;
+          playing = false;
+          t = 0;
+          last = 0;
+          if (audioEl) {
+            audioEl.currentTime = 0;
+            await audioEl.play().catch(() => {});
+          }
+          $("status").textContent = "Đang render video realtime…";
+          rec.start(1000);
+          const started = performance.now();
+          function step(now) {
+            t = (now - started) / 1000;
+            render();
+            if (t < totalDur()) requestAnimationFrame(step);
+            else {
+              t = totalDur() - 0.001;
+              render();
+              if (audioEl) audioEl.pause();
+              rec.stop();
+              t = oldT;
+              playing = oldPlaying;
+              render();
+            }
+          }
+          requestAnimationFrame(step);
+        });
+      }
+      function ensureFfmpegLib() {
+        if (window.FFmpeg) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+          const s = document.createElement("script");
+          s.src = "https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js";
+          s.onload = resolve;
+          s.onerror = () =>
+            reject(
+              new Error("Không tải được ffmpeg.wasm — kiểm tra kết nối mạng"),
+            );
+          document.head.appendChild(s);
+        });
+      }
+      function downloadBlob(blob, name) {
+        let a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      }
+      function exportFileBase() {
+        return (
+          (
+            activeProject?.title ||
+            activeProject?.id ||
+            "social_algorithm_short"
+          )
+            .toString()
+            .normalize("NFKD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-zA-Z0-9]+/g, "_")
+            .replace(/^_+|_+$/g, "")
+            .toLowerCase() || "video_export"
+        );
+      }
+      let ffmpegInstance = null;
+      async function getFfmpeg(onProgress) {
+        await ensureFfmpegLib();
+        if (!window.FFmpeg) throw new Error("Không tải được ffmpeg.wasm");
+        const { createFFmpeg } = FFmpeg;
+        if (!ffmpegInstance)
+          ffmpegInstance = createFFmpeg({
+            log: false,
+            corePath:
+              "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js",
+          });
+        ffmpegInstance.setProgress(({ ratio }) => {
+          if (onProgress && ratio >= 0 && ratio <= 1) onProgress(ratio);
+        });
+        if (!ffmpegInstance.isLoaded()) await ffmpegInstance.load();
+        return ffmpegInstance;
+      }
+      $("webm").onclick = async () => {
+        if (!hasScenes()) {
+          $("status").textContent = "Chưa có scene nào để xuất.";
+          return;
+        }
+        try {
+          $("webm").disabled = true;
+          $("mp4").disabled = true;
+          $("status").textContent = "Đang ghi hình…";
+          let b = await recordWebM();
+          downloadBlob(b, exportFileBase() + ".webm");
+          $("status").textContent =
+            `Đã xuất WebM (${(b.size / 1024 / 1024).toFixed(1)}MB).`;
+        } catch (e) {
+          $("status").textContent = "Lỗi export WebM: " + e.message;
+        } finally {
+          $("webm").disabled = false;
+          $("mp4").disabled = false;
+        }
+      };
+      $("mp4").onclick = async () => {
+        if (!hasScenes()) {
+          $("status").textContent = "Chưa có scene nào để xuất.";
+          return;
+        }
+        try {
+          $("mp4").disabled = true;
+          $("webm").disabled = true;
+          $("status").textContent = "Đang ghi hình (0%)…";
+          let webm = await recordWebM();
+          $("status").textContent = "Đang tải ffmpeg.wasm…";
+          const ffmpeg = await getFfmpeg((ratio) => {
+            $("status").textContent =
+              `Đang chuyển WebM → MP4… (${Math.round(ratio * 100)}%)`;
+          });
+          ffmpeg.FS("writeFile", "in.webm", await FFmpeg.fetchFile(webm));
+          await ffmpeg.run(
+            "-i",
+            "in.webm",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "faststart",
+            "-preset",
+            "veryfast",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "160k",
+            "out.mp4",
+          );
+          const out = ffmpeg.FS("readFile", "out.mp4");
+          const mp4Blob = new Blob([out.buffer], { type: "video/mp4" });
+          try {
+            ffmpeg.FS("unlink", "in.webm");
+            ffmpeg.FS("unlink", "out.mp4");
+          } catch {}
+          downloadBlob(mp4Blob, exportFileBase() + ".mp4");
+          $("status").textContent =
+            `Đã xuất MP4 (${(mp4Blob.size / 1024 / 1024).toFixed(1)}MB).`;
+        } catch (e) {
+          $("status").textContent =
+            "MP4 lỗi: " + e.message + " — thử tải WebM thay thế.";
+        } finally {
+          $("mp4").disabled = false;
+          $("webm").disabled = false;
+        }
+      };
+      document.querySelectorAll("[data-prompt]").forEach(
+        (btn) =>
+          (btn.onclick = () => {
+            $("aiPrompt").value = btn.dataset.prompt;
+            $("aiPrompt").focus();
+          }),
+      );
+      $("sendAi").onclick = () => sendAiPrompt($("aiPrompt").value, false);
+      $("copyAi").onclick = async () => {
+        const idx = currentSceneIndex(),
+          sc = scenes[idx],
+          txt = `Màn ${idx + 1} (${sc.id}) ${sc.title}: ${$("aiPrompt").value}`;
+        try {
+          await navigator.clipboard.writeText(txt);
+          setServerState("Đã copy prompt.", true);
+        } catch {
+          setServerState("Không copy được prompt.", false);
+        }
+      };
+      $("pullLatest").onclick = () => pullLatestProject("button");
+      $("askWhole").onclick = () => sendAiPrompt("", true);
+      $("fullscreen").onclick = async () => {
+        try {
+          const mode = await ensureHost();
+          if (mode === "mcp") await mcpBridge.requestDisplayMode("fullscreen");
+          else if (mode === "openai" && host()?.requestDisplayMode)
+            await host().requestDisplayMode({ mode: "fullscreen" });
+          else
+            setServerState(
+              "Fullscreen chỉ có khi widget được ChatGPT render từ MCP tool.",
+              false,
+            );
+        } catch (e) {
+          setServerState(
+            "Không mở được fullscreen: " + (e?.message || e),
+            false,
+          );
+        }
+      };
+      $("newProject").onclick = () => showStudioView("createView");
+      $("backProjects").onclick = () => {
+        routeOnApply = false;
+        renderProjectList();
+      };
+      $("analyzeScript").onclick = createProjectFlow;
+      $("savePlan").onclick = async () => {
+        await persistPlan();
+        $("savePlan").textContent = "Đã lưu";
+        setTimeout(() => ($("savePlan").textContent = "Lưu nháp"), 1200);
+      };
+      $("confirmPlan").onclick = async () => {
+        await persistPlan();
+        const plan = activeProject.workflow.contentPlan,
+          mode = await ensureHost();
+        if (!mode) {
+          alert(
+            "Nội dung đã lưu. Mở project trong ChatGPT MCP để AI tạo khung edit.",
+          );
+          return;
+        }
+        $("confirmPlan").disabled = true;
+        $("confirmPlan").textContent = "Đang nhờ ChatGPT tạo…";
+        updateWorkflowCard(
+          "pending",
+          "Đang tạo khung edit",
+          "ChatGPT đang chuyển content plan đã xác nhận thành scenes/layers hoàn chỉnh và ghi ngược lại vào JSON project.",
+        );
+        const prompt = `Use only the Video Editor app tools.
 
-Tôi đã xác nhận content plan của project ${activeProject.id}.
+Bạn là Video Editor chuyên dựng short-form 9:16. Tôi đã xác nhận content plan của project ${activeProject.id}.
 Hãy gọi generate_project_edit với:
 - project_id = "${activeProject.id}"
 - content_plan đúng như bên dưới
-- scenes là mảng scene 9:16 hoàn chỉnh
+- scenes là mảng scene 9:16 hoàn chỉnh, đủ chi tiết để dựng ngay không cần hỏi lại
 
-Yêu cầu scene:
-- Mỗi scene phải có id, title, duration, type, layers
-- Mỗi layer phải có id, text, x, y, size, color, weight, align, maxWidth
-- Mỗi scene phải có thêm object style gồm: layout, background, accent, kicker, motion, mood, notes
-- layout nên ưu tiên một trong: focus, split, stacked, flow, timeline, comparison, card-grid, quote, data
-- KHÔNG tái sử dụng visual style/animation/canvas của sample project social-algorithm-short
-- Scene phải đủ chi tiết như một editor thật: headline, support text, labels, numbers, caption, cue text nếu cần
-- Ưu tiên 4-10 layer text mỗi scene khi hợp lý, không làm sơ sài
-- Có thể dùng type mô tả theo nội dung scene; không bắt buộc bám bộ type sample
-- Chữ ngắn, dễ đọc trên mobile
-- x trong 0-540, y trong 0-960
-- Preserve project logic across scenes
-- BẮT BUỘC tuân theo style edit bên dưới khi tạo scene/layer
+QUY TẮC CỨNG:
+- KHÔNG tái sử dụng layout/animation/màu/canvas mặc định của sample project ${SAMPLE_PROJECT_ID || "social-algorithm-short"}. Mỗi project = một concept hình ảnh mới hoàn toàn.
+- Không bịa thêm số liệu/nội dung ngoài content_plan đã xác nhận.
+- Ưu tiên đổi nhịp visual mỗi 2-4 giây trong tổng thời lượng scene nếu duration đủ dài.
+
+Yêu cầu từng scene:
+- Trường cơ bản: id, title, duration, type, layers.
+- Mỗi layer: id, text, x (0-540), y (0-960), size, color, weight, align, maxWidth.
+- Ưu tiên 4-10 text layer/scene khi hợp lý, gồm: headline, kicker, support text, labels, numbers, caption, CTA hoặc annotation ngắn — không làm sơ sài, không liệt kê phẳng thiếu phân tầng.
+- Chọn 1 concept hình ảnh rõ ràng cho scene, ví dụ: flow, timeline, comparison, stacked-cards, checklist, data-reveal, quote-frame, UI-demo, process-map. Có thể tự đặt type mô tả theo nội dung, không bắt buộc bám type sample.
+- Chữ ngắn, keyword rõ, dễ đọc trên mobile.
+- Preserve đúng logic project qua các scene.
+- BẮT BUỘC tuân theo style edit bên dưới.
+
+Mỗi scene BẮT BUỘC có thêm object "style" gồm:
+- layout: một trong focus | split | stacked | flow | timeline | comparison | card-grid | quote | data
+- background: mood nền (màu/gradient/texture)
+- accent: màu nhấn chính
+- kicker: nhãn ngắn phía trên headline (nếu có)
+- motion: nhịp animation ngắn gọn, vd stagger-up, pop-in, wipe-left, counter-rise, pulse, reveal-down
+- mood: cảm xúc tổng thể của scene
+- notes: 1 câu mô tả ý đồ dựng, để editor đọc lướt hiểu ngay
+
+Trước khi trả kết quả, tự kiểm tra: có scene nào trùng layout/animation với sample không? có thiếu field nào trong style không? nếu có, sửa lại trước khi gọi tool.
 
 STYLE EDIT:
 ${stylePrompt(activeProject)}
 
 Content plan đã xác nhận:
 ${JSON.stringify(plan)}`;
-      await (mode==='mcp'?mcpBridge.sendMessage(prompt):host().sendFollowUpMessage({prompt})); routeOnApply=true; startAiWatch(activeProject.version);
-      $('confirmPlan').disabled=false;$('confirmPlan').textContent='Đang chờ AI cập nhật khung edit…';
-    };
-    window.addEventListener("focus", () => { if (!editing && hostConnected) pullLatestProject("focus") });
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !editing && hostConnected) pullLatestProject("visible") });
-    rebuild(); render(); updateTools(); finishStartupSoon(); initHost(); renderProjectList();
-  </script>
-</body>
-
+        await (mode === "mcp"
+          ? mcpBridge.sendMessage(prompt)
+          : host().sendFollowUpMessage({ prompt }));
+        routeOnApply = true;
+        startAiWatch(activeProject.version);
+        $("confirmPlan").disabled = false;
+        $("confirmPlan").textContent = "Đang chờ AI cập nhật khung edit…";
+      };
+      window.addEventListener("focus", () => {
+        if (!editing && hostConnected) pullLatestProject("focus");
+      });
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && !editing && hostConnected)
+          pullLatestProject("visible");
+      });
+      rebuild();
+      render();
+      updateTools();
+      finishStartupSoon();
+      initHost();
+      renderProjectList();
+    </script>
+  </body>
 </html>
