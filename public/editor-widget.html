@@ -1514,6 +1514,34 @@
       function viewForProject(project) {
         return projectViewState.get(project?.id) || defaultViewForProject(project);
       }
+      function buildGenerateEditPrompt(project) {
+        const plan = project?.workflow?.contentPlan || [];
+        return `Use only the Video Editor app tools.
+
+Call generate_project_edit in this turn. Do not ask follow-up questions. Do not stop at explanation text.
+
+Project:
+- project_id: "${project.id}"
+- title: "${project.title}"
+
+Required steps:
+1. Call get_video_project with project_id = "${project.id}".
+2. Read workflow.styleEdit.prompt and workflow.contentPlan from that project.
+3. Call generate_project_edit immediately for the same project_id.
+
+Hard rules:
+- Reuse the confirmed content_plan exactly as the source of truth. Do not invent new claims or numbers.
+- Return a complete 9:16 edit with scenes detailed enough to build immediately.
+- Every scene must include: id, title, duration, type, layers, style.
+- Every style object must include: layout, background, accent, kicker, motion, mood, notes.
+- Every layer must include: id, text, x, y, size, color, weight, align, maxWidth.
+- Keep Vietnamese copy concise and mobile-readable.
+- Do not reuse the sample project visual system.
+- Do not reply with only prose. The project is not updated until you call generate_project_edit.
+
+Confirmed content_plan JSON:
+${JSON.stringify(plan)}`;
+      }
       function statusLabel(status) {
         return (
           {
@@ -1803,7 +1831,10 @@ ${script}`;
           return;
         }
         if (routeOnApply) {
-          const targetView = viewForProject(project);
+          const targetView =
+            incomingStatus === "ready" && project?.scenes?.length
+              ? "editorView"
+              : viewForProject(project);
           if (targetView === "editorView") showEditor();
           else if (targetView === "planView") renderPlan(project);
           else showStudioView("createView");
@@ -2075,9 +2106,15 @@ ${script}`;
           }
           const now = Date.now();
           if (now > graceUntil) {
+            const stillWaitingForGenerate =
+              activeProject?.id === (requestedProjectId || activeProject?.id) &&
+              (activeProject?.workflow?.status || "ready") === "review" &&
+              !(activeProject?.scenes?.length > 0);
             setServerState(
-              `Chưa thấy AI cập nhật thêm · bấm “Lấy bản AI mới” nếu cần.`,
-              false,
+              stillWaitingForGenerate
+                ? `AI chưa gọi generate_project_edit cho project này. Hãy bấm lại “Xác nhận & tạo khung edit”.`
+                : `Chưa thấy AI cập nhật thêm · bấm “Lấy bản AI mới” nếu cần.`,
+              !stillWaitingForGenerate,
             );
             return;
           }
@@ -3458,44 +3495,7 @@ ${script}`;
           "Đang tạo khung edit",
           "ChatGPT đang chuyển content plan đã xác nhận thành scenes/layers hoàn chỉnh và ghi ngược lại vào JSON project.",
         );
-        const prompt = `Use only the Video Editor app tools.
-
-Bạn là Video Editor chuyên dựng short-form 9:16. Tôi đã xác nhận content plan của project ${activeProject.id}.
-Hãy gọi generate_project_edit với:
-- project_id = "${activeProject.id}"
-- content_plan đúng như bên dưới
-- scenes là mảng scene 9:16 hoàn chỉnh, đủ chi tiết để dựng ngay không cần hỏi lại
-
-QUY TẮC CỨNG:
-- KHÔNG tái sử dụng layout/animation/màu/canvas mặc định của sample project ${SAMPLE_PROJECT_ID || "social-algorithm-short"}. Mỗi project = một concept hình ảnh mới hoàn toàn.
-- Không bịa thêm số liệu/nội dung ngoài content_plan đã xác nhận.
-- Ưu tiên đổi nhịp visual mỗi 2-4 giây trong tổng thời lượng scene nếu duration đủ dài.
-
-Yêu cầu từng scene:
-- Trường cơ bản: id, title, duration, type, layers.
-- Mỗi layer: id, text, x (0-540), y (0-960), size, color, weight, align, maxWidth.
-- Ưu tiên 4-10 text layer/scene khi hợp lý, gồm: headline, kicker, support text, labels, numbers, caption, CTA hoặc annotation ngắn — không làm sơ sài, không liệt kê phẳng thiếu phân tầng.
-- Chọn 1 concept hình ảnh rõ ràng cho scene, ví dụ: flow, timeline, comparison, stacked-cards, checklist, data-reveal, quote-frame, UI-demo, process-map. Có thể tự đặt type mô tả theo nội dung, không bắt buộc bám type sample.
-- Chữ ngắn, keyword rõ, dễ đọc trên mobile.
-- Preserve đúng logic project qua các scene.
-- BẮT BUỘC tuân theo style edit bên dưới.
-
-Mỗi scene BẮT BUỘC có thêm object "style" gồm:
-- layout: một trong focus | split | stacked | flow | timeline | comparison | card-grid | quote | data
-- background: mood nền (màu/gradient/texture)
-- accent: màu nhấn chính
-- kicker: nhãn ngắn phía trên headline (nếu có)
-- motion: nhịp animation ngắn gọn, vd stagger-up, pop-in, wipe-left, counter-rise, pulse, reveal-down
-- mood: cảm xúc tổng thể của scene
-- notes: 1 câu mô tả ý đồ dựng, để editor đọc lướt hiểu ngay
-
-Trước khi trả kết quả, tự kiểm tra: có scene nào trùng layout/animation với sample không? có thiếu field nào trong style không? nếu có, sửa lại trước khi gọi tool.
-
-STYLE EDIT:
-${stylePrompt(activeProject)}
-
-Content plan đã xác nhận:
-${JSON.stringify(plan)}`;
+        const prompt = buildGenerateEditPrompt(activeProject);
         await (mode === "mcp"
           ? mcpBridge.sendMessage(prompt)
           : host().sendFollowUpMessage({ prompt }));
