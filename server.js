@@ -15,6 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const widgetHtml = readFileSync(join(__dirname, "public/editor-widget.html"), "utf8");
 const defaultProject = JSON.parse(readFileSync(join(__dirname, "data/default-project.json"), "utf8"));
+const styleEditPreset = JSON.parse(readFileSync(join(__dirname, "data/style-edit.json"), "utf8"));
 const TEMPLATE_URI = "ui://video-editor/project-studio-v040.html";
 const PROJECTS_DIR = join(__dirname, "data", "projects");
 const ACTIVE_FILE = join(PROJECTS_DIR, ".active");
@@ -33,8 +34,24 @@ function readProject(id) {
 function initialProject() {
   const project = clone(defaultProject);
   project.updatedAt = new Date().toISOString();
-  project.workflow = project.workflow || { status: "ready", script: "", contentPlan: [] };
+  project.workflow = project.workflow || { status: "ready", script: "", sourceUrl: "", contentPlan: [], styleEdit: clone(styleEditPreset) };
   return project;
+}
+function emptyProject() {
+  return {
+    id: "project",
+    title: "Untitled Project",
+    version: 0,
+    scenes: [],
+    updatedAt: new Date().toISOString(),
+    workflow: {
+      status: "planning",
+      script: "",
+      sourceUrl: "",
+      contentPlan: [],
+      styleEdit: clone(styleEditPreset),
+    },
+  };
 }
 if (!existsSync(projectPath(defaultProject.id))) writeFileSync(projectPath(defaultProject.id), JSON.stringify(initialProject(), null, 2));
 let activeProjectId = existsSync(ACTIVE_FILE) ? readFileSync(ACTIVE_FILE, "utf8").trim() : defaultProject.id;
@@ -95,7 +112,14 @@ const projectSchema = z.object({
   workflow: z.object({
     status: z.string(),
     script: z.string(),
+    sourceUrl: z.string().optional(),
     contentPlan: z.array(z.object({ id: z.string(), title: z.string(), purpose: z.string(), content: z.string(), duration: z.number() })),
+    styleEdit: z.object({
+      name: z.string(),
+      version: z.string(),
+      summary: z.string(),
+      prompt: z.string(),
+    }).optional(),
   }).optional(),
 });
 const mutationSchema = z.object({
@@ -137,7 +161,7 @@ function createVideoEditorServer() {
     { name: "chatgpt-video-editor", version: "0.3.1" },
     {
       instructions:
-        "This app manages durable JSON short-video projects. For a new project, call create_video_project first, then analyze its workflow.script and call set_project_content_plan for that exact project_id. Stop there so the user can edit and confirm the proposed screen copy. Only after explicit confirmation call generate_project_edit with complete scenes and layers. Describing a change never updates the JSON: call update_text_layer or update_scene for later edits. Preserve project, scene, and layer IDs. Keep Vietnamese copy concise for 9:16 video and always write tool results back to the project JSON.",
+        "This app manages durable JSON short-video projects. The default project is only a sample/template; new projects must not reuse its scenes unless explicitly requested. For a new project, call create_video_project first, then analyze its workflow.script and workflow.sourceUrl while following workflow.styleEdit.prompt, and call set_project_content_plan for that exact project_id. Stop there so the user can edit and confirm the proposed screen copy. Only after explicit confirmation call generate_project_edit with complete scenes and layers, still following workflow.styleEdit.prompt. Describing a change never updates the JSON: call update_text_layer or update_scene for later edits. Preserve project, scene, and layer IDs. Keep Vietnamese copy concise for 9:16 video and always write tool results back to the project JSON.",
     },
   );
 
@@ -310,7 +334,7 @@ function createVideoEditorServer() {
     "reset_video_project",
     {
       title: "Reset video project",
-      description: "Reset the current video project to the original 8-scene social-algorithm template.",
+      description: "Reset the current project. The default sample project returns to its original 8-scene template; generated projects keep their own workflow/script/style data and clear generated scenes.",
       inputSchema: {},
       outputSchema,
       annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false, idempotentHint: true },
@@ -323,12 +347,16 @@ function createVideoEditorServer() {
     },
     async (_args, extra) => {
       const current = clone(getProject(extra));
-      const project = initialProject();
+      const project = current.id === defaultProject.id ? initialProject() : emptyProject();
       project.id = current.id;
       project.title = current.title;
-      project.workflow = current.workflow || project.workflow;
+      project.workflow = {
+        ...(project.workflow || {}),
+        ...(current.workflow || {}),
+        status: current.id === defaultProject.id ? "ready" : ((current.workflow?.contentPlan?.length || 0) ? "review" : "planning"),
+      };
       const saved = saveProject(extra, project);
-      return reply(saved, "Video project reset to the original template.", {
+      return reply(saved, current.id === defaultProject.id ? "Video project reset to the original template." : "Generated scenes cleared. Workflow/script/style were kept for this project.", {
         source: "system",
         scope: "project",
         version: saved.version,
@@ -347,18 +375,21 @@ function createVideoEditorServer() {
 
   registerAppTool(server, "create_video_project", {
     title: "Create video project",
-    description: "Create a durable JSON project from default-project.json and its source script. After this, analyze the script and call set_project_content_plan.",
-    inputSchema: { title: z.string().min(1).max(120), script: z.string().min(20) }, outputSchema,
+    description: "Create a durable JSON project for a new video. New projects start empty and are later filled by AI using the styleEdit prompt plus the provided script/source link.",
+    inputSchema: { title: z.string().min(1).max(120), script: z.string().optional(), source_url: z.string().optional() }, outputSchema,
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     _meta: { ui: { visibility: ["model", "app"] }, "openai/widgetAccessible": true },
   }, async (args, extra) => {
+    const script = String(args.script || "").trim();
+    const sourceUrl = String(args.source_url || "").trim();
+    if (script.length < 20 && !sourceUrl) return reply(getProject(extra), "Provide either a source script of at least 20 characters or a source video URL.");
     let id = safeId(args.title), suffix = 2;
     while (existsSync(projectPath(id))) id = `${safeId(args.title)}-${suffix++}`;
-    const project = initialProject();
+    const project = emptyProject();
     project.id = id; project.title = args.title; project.version = 0;
-    project.workflow = { status: "planning", script: args.script, contentPlan: [] };
+    project.workflow = { status: "planning", script, sourceUrl, contentPlan: [], styleEdit: clone(styleEditPreset) };
     const saved = saveProject(extra, project);
-    return reply(saved, `Created ${id}. Analyze the script and call set_project_content_plan with concise content for each screen.`);
+    return reply(saved, `Created ${id}. Analyze workflow.script/workflow.sourceUrl while following workflow.styleEdit, then call set_project_content_plan.`);
   });
 
   registerAppTool(server, "select_video_project", {
@@ -439,12 +470,15 @@ const httpServer = createServer(async (req, res) => {
   if (req.method === "POST" && url.pathname === "/api/projects") {
     try {
       const args = await readJson(req);
-      if (!String(args.title || "").trim() || String(args.script || "").trim().length < 20) return sendJson(res, 400, { error: "Cần tên project và kịch bản tối thiểu 20 ký tự." });
+      const title = String(args.title || "").trim();
+      const script = String(args.script || "").trim();
+      const sourceUrl = String(args.source_url || "").trim();
+      if (!title || (script.length < 20 && !sourceUrl)) return sendJson(res, 400, { error: "Cần tên project và ít nhất một trong hai: kịch bản từ 20 ký tự hoặc link nguồn video." });
       let id = safeId(args.title), suffix = 2;
       while (existsSync(projectPath(id))) id = `${safeId(args.title)}-${suffix++}`;
-      const project = initialProject();
-      project.id = id; project.title = String(args.title).trim(); project.version = 0;
-      project.workflow = { status: "planning", script: String(args.script).trim(), contentPlan: [] };
+      const project = emptyProject();
+      project.id = id; project.title = title; project.version = 0;
+      project.workflow = { status: "planning", script, sourceUrl, contentPlan: [], styleEdit: clone(styleEditPreset) };
       return sendJson(res, 201, { project: saveProject(null, project) });
     } catch (error) { return sendJson(res, 400, { error: error.message }); }
   }

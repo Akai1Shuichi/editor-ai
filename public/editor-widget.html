@@ -674,6 +674,8 @@
     .workflow-card.ready{border-color:#30523f;background:#0b1712}
     .workflow-card.warn{border-color:#6a5635;background:#171108}
     .field-note{font-size:12px;color:var(--muted);margin-top:-10px;margin-bottom:16px}
+    .style-box{border:1px solid #283245;background:#0a0f18;border-radius:14px;padding:14px 16px;font-size:12px;color:#d4dceb;line-height:1.7;margin-bottom:22px}
+    .style-box b{color:var(--cyan)}
     .editor-nav{display:flex;align-items:center;gap:12px}.editor-nav-title{font-size:12px;color:var(--muted)}
     @media(max-width:760px){.studio-view{padding:28px 18px}.view-head,.create-layout{display:block}.view-head .studio-btn{margin-top:18px}.steps{display:none}.project-row{grid-template-columns:1fr 28px}.project-row>:nth-child(2),.project-row>:nth-child(3){display:none}.plan-item{grid-template-columns:34px 1fr}.plan-item>:nth-child(3),.plan-item>:nth-child(4){grid-column:2}}
   </style>
@@ -688,11 +690,11 @@
     </main>
     <main class="studio-view" id="createView" hidden>
       <div class="view-head"><div><h2>Project mới</h2><p>Đưa kịch bản thô vào đây. AI sẽ chia nội dung thành các màn để bạn duyệt trước khi dựng khung edit.</p></div></div>
-      <div class="create-layout"><div><div class="field"><label>Tên project</label><input id="projectTitle" placeholder="Ví dụ: 5 cách xây kênh cá nhân"></div><div class="field"><label>Kịch bản</label><textarea id="projectScript" placeholder="Dán toàn bộ kịch bản video..."></textarea><div class="field-note" id="scriptNote">Dán script đủ ý. Sau bước này ChatGPT sẽ đề xuất nội dung cho từng màn trước khi dựng layout.</div></div><button class="studio-btn primary" id="analyzeScript">Phân tích kịch bản với ChatGPT →</button></div><aside class="steps"><div class="step active"><strong>01 · Kịch bản</strong>Nguồn nội dung gốc</div><div class="step"><strong>02 · Nội dung các màn</strong>AI đề xuất, bạn chỉnh sửa</div><div class="step"><strong>03 · Khung edit</strong>AI tạo layout và layers</div></aside></div>
+      <div class="create-layout"><div><div class="field"><label>Tên project</label><input id="projectTitle" placeholder="Ví dụ: 5 cách xây kênh cá nhân"></div><div class="field"><label>Link YouTube nguồn (tuỳ chọn)</label><input id="projectSourceUrl" placeholder="https://www.youtube.com/watch?v=..."></div><div class="field"><label>Kịch bản / note nguồn</label><textarea id="projectScript" placeholder="Dán toàn bộ kịch bản video, transcript, note phân tích..."></textarea><div class="field-note" id="scriptNote">Nhập script hoặc ít nhất dán link nguồn. ChatGPT sẽ phân tích theo style edit riêng trước khi dựng layout.</div></div><div class="style-box"><b>Style edit đang áp dụng</b><br>HOOK → GIẢI THÍCH → VISUAL → INSIGHT → KẾT LUẬN · 60–90s · ưu tiên voice ngắn, visual đổi 2–4 giây/lần, subtitle ngắn và motion graphic cho flow/số liệu.</div><button class="studio-btn primary" id="analyzeScript">Phân tích kịch bản với ChatGPT →</button></div><aside class="steps"><div class="step active"><strong>01 · Kịch bản</strong>Nguồn nội dung gốc</div><div class="step"><strong>02 · Nội dung các màn</strong>AI đề xuất, bạn chỉnh sửa</div><div class="step"><strong>03 · Khung edit</strong>AI tạo layout và layers</div></aside></div>
     </main>
     <main class="studio-view" id="planView" hidden>
       <div class="view-head"><div><h2>Duyệt nội dung</h2><p>Chỉnh trực tiếp tiêu đề, nội dung và thời lượng. Khi xác nhận, ChatGPT mới bắt đầu tạo khung edit.</p></div></div>
-      <div class="workflow-card pending" id="workflowCard"><strong>Đang chờ AI</strong><p>Project vừa tạo. ChatGPT sẽ đọc kịch bản và lưu đề xuất nội dung cho từng màn vào JSON này.</p></div>
+      <div class="workflow-card pending" id="workflowCard"><strong>Đang chờ AI</strong><p>Project vừa tạo. ChatGPT sẽ đọc kịch bản hoặc link nguồn, áp dụng style edit riêng và lưu đề xuất nội dung cho từng màn vào JSON này.</p></div>
       <div class="plan-list" id="planList"></div><div class="plan-actions"><button class="studio-btn" id="savePlan">Lưu nháp</button><button class="studio-btn primary" id="confirmPlan">Xác nhận & tạo khung edit →</button></div>
     </main>
   </div>
@@ -839,6 +841,7 @@
     function showEditor() { $('studioShell').hidden = false; ['projectsView','createView','planView'].forEach(x => $(x).hidden = true); $('editorApp').hidden = false; requestHostResize(); }
     function statusLabel(status) { return ({planning:'Đang chờ AI',review:'Chờ xác nhận',ready:'Sẵn sàng edit'})[status] || 'Sẵn sàng edit' }
     function escapeAttr(v) { return escapeHtml(v).replace(/'/g, '&#39;') }
+    function stylePrompt(project = activeProject) { return String(project?.workflow?.styleEdit?.prompt || '').trim() }
     function updateWorkflowCard(kind, title, body) {
       const card = $('workflowCard');
       if (!card) return;
@@ -885,12 +888,12 @@
       else { const r = await fetch('/api/projects/'+encodeURIComponent(activeProject.id), {method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({project:activeProject})}); const d=await r.json(); if(d.project) activeProject=d.project; }
     }
     async function createProjectFlow() {
-      const title=$('projectTitle').value.trim(), script=$('projectScript').value.trim();
-      if(!title || script.length<20) { alert('Vui lòng nhập tên project và kịch bản tối thiểu 20 ký tự.'); return; }
+      const title=$('projectTitle').value.trim(), script=$('projectScript').value.trim(), sourceUrl=$('projectSourceUrl').value.trim();
+      if(!title || (!sourceUrl && script.length<20)) { alert('Vui lòng nhập tên project và ít nhất một trong hai: link nguồn hoặc kịch bản tối thiểu 20 ký tự.'); return; }
       $('analyzeScript').disabled=true; $('analyzeScript').textContent='Đang tạo project…'; routeOnApply=true;
       const mode=await ensureHost(); let project;
-      if(mode){ const r=await callHostTool('create_video_project',{title,script}); project=r?.structuredContent?.project; }
-      else { const r=await fetch('/api/projects',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({title,script})}); project=(await r.json()).project; }
+      if(mode){ const r=await callHostTool('create_video_project',{title,script,source_url:sourceUrl}); project=r?.structuredContent?.project; }
+      else { const r=await fetch('/api/projects',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({title,script,source_url:sourceUrl})}); project=(await r.json()).project; }
       if(project){
         activeProject=project;
         renderPlan(project);
@@ -898,9 +901,10 @@
 
 Project cần phân tích: ${project.id}
 Tên project: ${project.title}
+Link nguồn: ${project.workflow?.sourceUrl || '(không có)'}
 
 Nhiệm vụ:
-1. Đọc kịch bản bên dưới.
+1. Đọc link nguồn và/hoặc kịch bản bên dưới.
 2. Gọi tool set_project_content_plan cho đúng project_id = "${project.id}".
 3. Tạo 5-12 màn video 9:16, mỗi item phải có đủ:
 - id
@@ -909,7 +913,11 @@ Nhiệm vụ:
 - content
 - duration
 4. Content phải ngắn, dễ đọc, phù hợp màn hình dọc, tiếng Việt tự nhiên.
-5. Ở bước này tuyệt đối CHƯA gọi generate_project_edit và CHƯA tạo scenes/layers.
+5. BẮT BUỘC tuân theo style edit bên dưới khi phân tích.
+6. Ở bước này tuyệt đối CHƯA gọi generate_project_edit và CHƯA tạo scenes/layers.
+
+STYLE EDIT:
+${stylePrompt(project)}
 
 Kịch bản nguồn:
 ${script}`;
@@ -928,19 +936,21 @@ ${script}`;
       startupTimer = setTimeout(() => { startupPhase = false }, delay);
     }
     function applyProject(project) {
-      if (!project?.scenes?.length) return;
       activeProject = JSON.parse(JSON.stringify(project));
       $('currentProjectTitle').textContent = project.title || '';
-      const currentId = scenes[currentSceneIndex()]?.id;
-      scenes = JSON.parse(JSON.stringify(project.scenes));
       projectVersion = Number(project.version || 0);
-      scenes.forEach((s, i) => s.id = s.id || `scene-${i + 1}`);
-      const idx = Math.max(0, scenes.findIndex(s => s.id === currentId));
-      const bb = bounds();
-      t = Math.min(bb[idx]?.a || 0, Math.max(0, totalDur() - .001));
-      selected = null;
-      rebuild(); render(); updateTools(); updateAiContext(); requestHostResize(); finishStartupSoon();
-      setTimeout(() => updateModelContext(), startupPhase ? 220 : 0);
+      if (project?.scenes?.length) {
+        const currentId = scenes.length ? scenes[currentSceneIndex()]?.id : null;
+        scenes = JSON.parse(JSON.stringify(project.scenes));
+        scenes.forEach((s, i) => s.id = s.id || `scene-${i + 1}`);
+        const idx = Math.max(0, scenes.findIndex(s => s.id === currentId));
+        const bb = bounds();
+        t = Math.min(bb[idx]?.a || 0, Math.max(0, totalDur() - .001));
+        selected = null;
+        rebuild(); render(); updateTools(); updateAiContext();
+        setTimeout(() => updateModelContext(), startupPhase ? 220 : 0);
+      }
+      requestHostResize(); finishStartupSoon();
       setServerState(`Đã nhận project v${projectVersion} từ MCP · ${bridgeMode}`, true)
       if (routeOnApply) {
         const status = project.workflow?.status || 'ready';
@@ -1208,6 +1218,10 @@ Yêu cầu scene:
 - Chữ ngắn, dễ đọc trên mobile
 - x trong 0-540, y trong 0-960
 - Preserve project logic across scenes
+- BẮT BUỘC tuân theo style edit bên dưới khi tạo scene/layer
+
+STYLE EDIT:
+${stylePrompt(activeProject)}
 
 Content plan đã xác nhận:
 ${JSON.stringify(plan)}`;
