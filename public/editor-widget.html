@@ -1404,6 +1404,7 @@
         bridgeMode = "standalone";
       let activeProject = null,
         routeOnApply = false;
+      let pendingProjectId = null;
       let projectVersion = 0,
         lastMutation = null,
         aiWatchTimer = null,
@@ -1558,6 +1559,7 @@
         }
       }
       async function openStoredProject(id) {
+        pendingProjectId = null;
         routeOnApply = true;
         const mode = await ensureHost();
         if (mode)
@@ -1663,6 +1665,7 @@
           project = (await r.json()).project;
         }
         if (project) {
+          pendingProjectId = project.id;
           activeProject = project;
           renderPlan(project);
           const prompt = `Bạn có thể dùng khả năng của ChatGPT để mở/đọc/phân tích link nguồn nếu có. Chỉ dùng Video Editor app tools ở bước ghi kết quả vào project JSON.
@@ -1726,6 +1729,11 @@ ${script}`;
         }, delay);
       }
       function applyProject(project) {
+        if (pendingProjectId && project?.id && project.id !== pendingProjectId) return;
+        const previousProjectId = activeProject?.id || null;
+        const incomingPlanCount = project?.workflow?.contentPlan?.length || 0;
+        const previousPlanCount = activeProject?.workflow?.contentPlan?.length || 0;
+        const incomingStatus = project?.workflow?.status || "ready";
         activeProject = JSON.parse(JSON.stringify(project));
         $("currentProjectTitle").textContent = project.title || "";
         projectVersion = Number(project.version || 0);
@@ -1762,9 +1770,24 @@ ${script}`;
           `Đã nhận project v${projectVersion} từ MCP · ${bridgeMode}`,
           true,
         );
+        const planViewOpen = !$("planView").hidden;
+        const sameProjectAsBefore = previousProjectId && previousProjectId === project.id;
+        if (
+          incomingStatus === "review" &&
+          incomingPlanCount > 0 &&
+          project.id === pendingProjectId &&
+          (planViewOpen || incomingPlanCount !== previousPlanCount)
+        ) {
+          pendingProjectId = null;
+          renderPlan(project);
+          return;
+        }
         if (routeOnApply) {
           const status = project.workflow?.status || "ready";
-          if (status === "review") renderPlan(project);
+          if (status === "review") {
+            if (project.id === pendingProjectId) pendingProjectId = null;
+            renderPlan(project);
+          }
           else if (status === "planning") renderPlan(project);
           else if (status === "ready") showEditor();
           else showStudioView("createView");
@@ -3380,8 +3403,12 @@ ${script}`;
           );
         }
       };
-      $("newProject").onclick = () => showStudioView("createView");
+      $("newProject").onclick = () => {
+        pendingProjectId = null;
+        showStudioView("createView");
+      };
       $("backProjects").onclick = () => {
+        pendingProjectId = null;
         routeOnApply = false;
         renderProjectList();
       };
