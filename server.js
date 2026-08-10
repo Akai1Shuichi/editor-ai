@@ -25,6 +25,11 @@ const clone = (v) => JSON.parse(JSON.stringify(v));
 const safeId = (value) => String(value || "project").toLowerCase().normalize("NFD")
   .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || "project";
 const projectPath = (id) => join(PROJECTS_DIR, `${safeId(id)}.json`);
+function readProject(id) {
+  const path = projectPath(id);
+  if (!existsSync(path)) return null;
+  return JSON.parse(readFileSync(path, "utf8"));
+}
 function initialProject() {
   const project = clone(defaultProject);
   project.updatedAt = new Date().toISOString();
@@ -45,7 +50,8 @@ function getProject(_extra) {
   return projectStore;
 }
 function saveProject(_extra, project) {
-  project.version = (projectStore?.version ?? project.version ?? 0) + 1;
+  const stored = readProject(project.id);
+  project.version = (stored?.version ?? project.version ?? 0) + 1;
   project.updatedAt = new Date().toISOString();
   projectStore = project;
   activeProjectId = project.id;
@@ -131,7 +137,7 @@ function createVideoEditorServer() {
     { name: "chatgpt-video-editor", version: "0.3.1" },
     {
       instructions:
-        "This app manages durable JSON short-video projects. For a new script, create_video_project first, then analyze it and call set_project_content_plan; stop there so the user can edit and confirm the proposed screen copy. Only after explicit confirmation call generate_project_edit with complete scenes and layers. Describing a change never updates the JSON: call update_text_layer or update_scene for later edits. Preserve project, scene, and layer IDs. Keep Vietnamese copy concise for 9:16 video.",
+        "This app manages durable JSON short-video projects. For a new project, call create_video_project first, then analyze its workflow.script and call set_project_content_plan for that exact project_id. Stop there so the user can edit and confirm the proposed screen copy. Only after explicit confirmation call generate_project_edit with complete scenes and layers. Describing a change never updates the JSON: call update_text_layer or update_scene for later edits. Preserve project, scene, and layer IDs. Keep Vietnamese copy concise for 9:16 video and always write tool results back to the project JSON.",
     },
   );
 
@@ -316,7 +322,11 @@ function createVideoEditorServer() {
       },
     },
     async (_args, extra) => {
-      const project = clone(defaultProject);
+      const current = clone(getProject(extra));
+      const project = initialProject();
+      project.id = current.id;
+      project.title = current.title;
+      project.workflow = current.workflow || project.workflow;
       const saved = saveProject(extra, project);
       return reply(saved, "Video project reset to the original template.", {
         source: "system",
