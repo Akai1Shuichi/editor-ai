@@ -1,7 +1,3 @@
-import { createServer } from "node:http";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import {
   registerAppResource,
   registerAppTool,
@@ -9,6 +5,10 @@ import {
 } from "@modelcontextprotocol/ext-apps/server";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { readFileSync } from "node:fs";
+import { createServer } from "node:http";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -99,7 +99,7 @@ function createVideoEditorServer() {
     { name: "chatgpt-video-editor", version: "0.3.1" },
     {
       instructions:
-        "This plugin edits a short-form video project. When the user asks to change a screen/scene, use update_text_layer for targeted text/style edits or update_scene for duration/multi-layer edits. Preserve scene IDs and layer IDs. Keep Vietnamese copy concise for 9:16 short video. The ~200 distribution ladder is an illustrative model, not a universal platform rule.",
+        "This plugin edits a short-form video project. CRITICAL: describing a change in your chat reply does NOT change the video — the project only changes when you actually call update_text_layer or update_scene. Never tell the user a scene/text was changed, translated, or updated unless you called one of those tools in this turn and it returned a new version number. If the user asks to translate, rewrite, shorten, or restyle any text (even a single word), you MUST call update_text_layer (one call per layer, or update_scene with layer_updates for several layers in the same scene at once) with the new text before replying. Use update_text_layer for targeted text/style edits or update_scene for duration/multi-layer edits. Preserve scene IDs and layer IDs. Keep Vietnamese copy concise for 9:16 short video. The ~200 distribution ladder is an illustrative model, not a universal platform rule.",
     },
   );
 
@@ -163,12 +163,13 @@ function createVideoEditorServer() {
         "openai/widgetAccessible": true,
       },
     },
-    async (_args, extra) =>
-      reply(getProject(extra), "Current video project loaded.", {
-        source: "system",
-        scope: "read",
-        version: getProject(extra).version,
-      }),
+    // IMPORTANT: this tool is polled repeatedly by the widget to detect when the
+    // model finishes an edit (see startAiWatch in editor-widget.html). It must
+    // NOT attach a mutation object — doing so overwrites the widget's record of
+    // the real "model" mutation with a fake "system/read" one on every poll,
+    // which breaks completion detection. Reads stay silent; only real writes
+    // (update_text_layer/update_scene/reset_video_project) report a mutation.
+    async (_args, extra) => reply(getProject(extra), "Current video project loaded."),
   );
 
   registerAppTool(
@@ -176,7 +177,7 @@ function createVideoEditorServer() {
     "update_text_layer",
     {
       title: "Update text layer",
-      description: "Update one text layer in one scene. Best for rewriting a headline, keyword, size, position, weight, alignment, or color without disturbing other layers.",
+      description: "Update one text layer in one scene. Best for rewriting, translating, shortening, or restyling (size/position/weight/align/color) a headline or keyword without disturbing other layers. You MUST call this tool to actually apply any text change — including translations — the user's video is not updated until you do. Call it once per layer that needs to change.",
       inputSchema: {
         scene_id: z.string(),
         layer_id: z.string(),
@@ -224,7 +225,7 @@ function createVideoEditorServer() {
     "update_scene",
     {
       title: "Update scene",
-      description: "Update a scene duration/title/type and/or multiple existing text layers at once. Preserve the scene ID and existing layer IDs.",
+      description: "Update a scene duration/title/type and/or multiple existing text layers at once (e.g. translating every layer in a scene in one call via layer_updates). Preserve the scene ID and existing layer IDs. You MUST call this tool (or update_text_layer) to actually apply the change — the user's video is not updated until you do.",
       inputSchema: {
         scene_id: z.string(),
         client_origin: z.enum(["widget", "system"]).optional(),
