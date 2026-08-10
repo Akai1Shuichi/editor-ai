@@ -5,7 +5,7 @@ import {
 } from "@modelcontextprotocol/ext-apps/server";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,24 +15,50 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const widgetHtml = readFileSync(join(__dirname, "public/editor-widget.html"), "utf8");
 const defaultProject = JSON.parse(readFileSync(join(__dirname, "data/default-project.json"), "utf8"));
-const TEMPLATE_URI = "ui://video-editor/social-algorithm-v031.html";
+const TEMPLATE_URI = "ui://video-editor/project-studio-v040.html";
+const PROJECTS_DIR = join(__dirname, "data", "projects");
+const ACTIVE_FILE = join(PROJECTS_DIR, ".active");
+mkdirSync(PROJECTS_DIR, { recursive: true });
 
 const clone = (v) => JSON.parse(JSON.stringify(v));
 
-// v0.3: this dev server is intentionally single-project/single-user.
-// ChatGPT model tool calls and widget-originated tools are not guaranteed to
-// carry the exact same host/session metadata. A session-keyed in-memory Map can
-// therefore split one editor into two different project snapshots.
-// Keep one authoritative project on this local MCP process so every caller
-// reads/writes the same state. Add auth + durable per-user storage before
-// deploying this to multiple users.
-let projectStore = clone(defaultProject);
+const safeId = (value) => String(value || "project").toLowerCase().normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || "project";
+const projectPath = (id) => join(PROJECTS_DIR, `${safeId(id)}.json`);
+function initialProject() {
+  const project = clone(defaultProject);
+  project.updatedAt = new Date().toISOString();
+  project.workflow = project.workflow || { status: "ready", script: "", contentPlan: [] };
+  return project;
+}
+if (!existsSync(projectPath(defaultProject.id))) writeFileSync(projectPath(defaultProject.id), JSON.stringify(initialProject(), null, 2));
+let activeProjectId = existsSync(ACTIVE_FILE) ? readFileSync(ACTIVE_FILE, "utf8").trim() : defaultProject.id;
+if (!existsSync(projectPath(activeProjectId))) activeProjectId = defaultProject.id;
+let projectStore = JSON.parse(readFileSync(projectPath(activeProjectId), "utf8"));
+function listProjects() {
+  return readdirSync(PROJECTS_DIR).filter((name) => name.endsWith(".json")).map((name) => {
+    const p = JSON.parse(readFileSync(join(PROJECTS_DIR, name), "utf8"));
+    return { id: p.id, title: p.title, version: p.version, updatedAt: p.updatedAt, status: p.workflow?.status || "ready", sceneCount: p.scenes?.length || 0 };
+  }).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+}
 function getProject(_extra) {
   return projectStore;
 }
 function saveProject(_extra, project) {
   project.version = (projectStore?.version ?? project.version ?? 0) + 1;
+  project.updatedAt = new Date().toISOString();
   projectStore = project;
+  activeProjectId = project.id;
+  writeFileSync(projectPath(project.id), JSON.stringify(project, null, 2));
+  writeFileSync(ACTIVE_FILE, project.id);
+  return projectStore;
+}
+function selectProject(id) {
+  const path = projectPath(id);
+  if (!existsSync(path)) return null;
+  projectStore = JSON.parse(readFileSync(path, "utf8"));
+  activeProjectId = projectStore.id;
+  writeFileSync(ACTIVE_FILE, activeProjectId);
   return projectStore;
 }
 
@@ -59,6 +85,12 @@ const projectSchema = z.object({
   title: z.string(),
   version: z.number(),
   scenes: z.array(sceneSchema),
+  updatedAt: z.string().optional(),
+  workflow: z.object({
+    status: z.string(),
+    script: z.string(),
+    contentPlan: z.array(z.object({ id: z.string(), title: z.string(), purpose: z.string(), content: z.string(), duration: z.number() })),
+  }).optional(),
 });
 const mutationSchema = z.object({
   source: z.enum(["widget", "model", "system", "unknown"]),
@@ -99,7 +131,7 @@ function createVideoEditorServer() {
     { name: "chatgpt-video-editor", version: "0.3.1" },
     {
       instructions:
-        "This plugin edits a short-form video project. CRITICAL: describing a change in your chat reply does NOT change the video — the project only changes when you actually call update_text_layer or update_scene. Never tell the user a scene/text was changed, translated, or updated unless you called one of those tools in this turn and it returned a new version number. If the user asks to translate, rewrite, shorten, or restyle any text (even a single word), you MUST call update_text_layer (one call per layer, or update_scene with layer_updates for several layers in the same scene at once) with the new text before replying. Use update_text_layer for targeted text/style edits or update_scene for duration/multi-layer edits. Preserve scene IDs and layer IDs. Keep Vietnamese copy concise for 9:16 short video. The ~200 distribution ladder is an illustrative model, not a universal platform rule.",
+        "This app manages durable JSON short-video projects. For a new script, create_video_project first, then analyze it and call set_project_content_plan; stop there so the user can edit and confirm the proposed screen copy. Only after explicit confirmation call generate_project_edit with complete scenes and layers. Describing a change never updates the JSON: call update_text_layer or update_scene for later edits. Preserve project, scene, and layer IDs. Keep Vietnamese copy concise for 9:16 video.",
     },
   );
 
@@ -294,11 +326,81 @@ function createVideoEditorServer() {
     },
   );
 
+  registerAppTool(server, "list_video_projects", {
+    title: "List video projects",
+    description: "List every JSON video project stored by the editor.",
+    inputSchema: {},
+    outputSchema: { projects: z.array(z.object({ id: z.string(), title: z.string(), version: z.number(), updatedAt: z.string().optional(), status: z.string(), sceneCount: z.number() })), activeProjectId: z.string() },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    _meta: { ui: { visibility: ["model", "app"] }, "openai/widgetAccessible": true },
+  }, async () => ({ structuredContent: { projects: listProjects(), activeProjectId }, content: [] }));
+
+  registerAppTool(server, "create_video_project", {
+    title: "Create video project",
+    description: "Create a durable JSON project from default-project.json and its source script. After this, analyze the script and call set_project_content_plan.",
+    inputSchema: { title: z.string().min(1).max(120), script: z.string().min(20) }, outputSchema,
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    _meta: { ui: { visibility: ["model", "app"] }, "openai/widgetAccessible": true },
+  }, async (args, extra) => {
+    let id = safeId(args.title), suffix = 2;
+    while (existsSync(projectPath(id))) id = `${safeId(args.title)}-${suffix++}`;
+    const project = initialProject();
+    project.id = id; project.title = args.title; project.version = 0;
+    project.workflow = { status: "planning", script: args.script, contentPlan: [] };
+    const saved = saveProject(extra, project);
+    return reply(saved, `Created ${id}. Analyze the script and call set_project_content_plan with concise content for each screen.`);
+  });
+
+  registerAppTool(server, "select_video_project", {
+    title: "Select video project", description: "Select and load one stored JSON project.",
+    inputSchema: { project_id: z.string() }, outputSchema,
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    _meta: { ui: { visibility: ["model", "app"] }, "openai/widgetAccessible": true },
+  }, async (args) => {
+    const project = selectProject(args.project_id);
+    return project ? reply(project, `Loaded ${project.title}.`) : reply(getProject(), `Project ${args.project_id} was not found.`);
+  });
+
+  const planItemSchema = z.object({ id: z.string(), title: z.string(), purpose: z.string(), content: z.string(), duration: z.number().min(1).max(30) });
+  registerAppTool(server, "set_project_content_plan", {
+    title: "Set project content plan",
+    description: "Save AI-proposed, editable content for every screen. Do not create layout layers yet; the user reviews this plan first.",
+    inputSchema: { project_id: z.string(), content_plan: z.array(planItemSchema).min(1).max(20) }, outputSchema,
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    _meta: { ui: { visibility: ["model", "app"] }, "openai/widgetAccessible": true },
+  }, async (args, extra) => {
+    if (getProject().id !== args.project_id) selectProject(args.project_id);
+    const project = clone(getProject(extra));
+    project.workflow = { ...(project.workflow || {}), status: "review", contentPlan: args.content_plan };
+    return reply(saveProject(extra, project), "Content plan saved. Ask the user to review and confirm it before generating the edit.");
+  });
+
+  registerAppTool(server, "generate_project_edit", {
+    title: "Generate project edit",
+    description: "Generate the final edit frame after user confirmation. Replace scenes with complete 9:16 scene/layer definitions based on the reviewed content plan.",
+    inputSchema: { project_id: z.string(), content_plan: z.array(planItemSchema).min(1).max(20), scenes: z.array(sceneSchema).min(1).max(20) }, outputSchema,
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    _meta: { ui: { visibility: ["model", "app"] }, "openai/widgetAccessible": true },
+  }, async (args, extra) => {
+    if (getProject().id !== args.project_id) selectProject(args.project_id);
+    const project = clone(getProject(extra));
+    project.scenes = args.scenes;
+    project.workflow = { ...(project.workflow || {}), status: "ready", contentPlan: args.content_plan };
+    const saved = saveProject(extra, project);
+    return reply(saved, "Final edit generated and saved to the project JSON.", { source: "model", scope: "project", version: saved.version });
+  });
+
   return server;
 }
 
 const port = Number(process.env.PORT ?? 8787);
 const MCP_PATH = "/mcp";
+function sendJson(res, status, payload) { res.writeHead(status, { "content-type": "application/json; charset=utf-8" }); res.end(JSON.stringify(payload)); }
+async function readJson(req) {
+  let body = "";
+  for await (const chunk of req) { body += chunk; if (body.length > 2_000_000) throw new Error("Request too large"); }
+  return body ? JSON.parse(body) : {};
+}
 const httpServer = createServer(async (req, res) => {
   if (!req.url) return res.writeHead(400).end("Missing URL");
   const url = new URL(req.url, `http://${req.headers.host ?? "localhost"}`);
@@ -321,6 +423,33 @@ const httpServer = createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/editor") {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     return res.end(widgetHtml);
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/projects") return sendJson(res, 200, { projects: listProjects(), activeProjectId });
+  if (req.method === "POST" && url.pathname === "/api/projects") {
+    try {
+      const args = await readJson(req);
+      if (!String(args.title || "").trim() || String(args.script || "").trim().length < 20) return sendJson(res, 400, { error: "Cần tên project và kịch bản tối thiểu 20 ký tự." });
+      let id = safeId(args.title), suffix = 2;
+      while (existsSync(projectPath(id))) id = `${safeId(args.title)}-${suffix++}`;
+      const project = initialProject();
+      project.id = id; project.title = String(args.title).trim(); project.version = 0;
+      project.workflow = { status: "planning", script: String(args.script).trim(), contentPlan: [] };
+      return sendJson(res, 201, { project: saveProject(null, project) });
+    } catch (error) { return sendJson(res, 400, { error: error.message }); }
+  }
+  const projectMatch = url.pathname.match(/^\/api\/projects\/([^/]+)$/);
+  if (projectMatch && req.method === "GET") {
+    const project = selectProject(decodeURIComponent(projectMatch[1]));
+    return project ? sendJson(res, 200, { project }) : sendJson(res, 404, { error: "Project không tồn tại." });
+  }
+  if (projectMatch && req.method === "PUT") {
+    try {
+      const { project } = await readJson(req);
+      if (!project || safeId(project.id) !== safeId(decodeURIComponent(projectMatch[1]))) return sendJson(res, 400, { error: "Project không hợp lệ." });
+      if (getProject().id !== project.id) selectProject(project.id);
+      return sendJson(res, 200, { project: saveProject(null, project) });
+    } catch (error) { return sendJson(res, 400, { error: error.message }); }
   }
 
   const MCP_METHODS = new Set(["POST", "GET", "DELETE"]);

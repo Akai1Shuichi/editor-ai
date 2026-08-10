@@ -653,11 +653,42 @@
         max-height: 300px
       }
     }
+    .studio-shell{background:#080b12;color:var(--white)}
+    .studio-top{height:68px;padding:0 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:#0b0f18;position:sticky;top:0;z-index:30}
+    .studio-brand{font-weight:800;letter-spacing:-.03em}.studio-brand span{color:var(--cyan)}
+    .studio-view{padding:42px max(24px,6vw);animation:viewIn .32s ease both}.studio-view[hidden],.app[hidden]{display:none!important}
+    @keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .view-head{display:flex;align-items:end;justify-content:space-between;gap:24px;border-bottom:1px solid var(--line);padding-bottom:24px;margin-bottom:8px}
+    .view-head h2{font-size:clamp(28px,4vw,54px);letter-spacing:-.05em;margin:0}.view-head p{color:var(--muted);max-width:520px;line-height:1.7;margin:8px 0 0}
+    .project-row{display:grid;grid-template-columns:minmax(0,1fr) 130px 120px 32px;gap:18px;align-items:center;padding:22px 4px;border-bottom:1px solid var(--line);cursor:pointer;transition:.2s ease}
+    .project-row:hover{padding-left:14px;background:#ffffff05}.project-row h3{margin:0 0 6px;font-size:17px}.project-meta,.project-state{font-size:12px;color:var(--muted)}
+    .project-state{color:var(--green);text-transform:uppercase;letter-spacing:.08em}.arrow{font-size:24px;color:var(--cyan)}
+    .studio-btn{border:1px solid #344158;background:#111827;color:var(--white);border-radius:10px;padding:11px 16px;font:600 12px inherit;cursor:pointer}.studio-btn.primary{background:var(--cyan);border-color:var(--cyan);color:#041016}
+    .create-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:48px;max-width:1180px}.field{margin:0 0 22px}.field label{display:block;margin-bottom:9px;font-size:12px}.field input,.field textarea{width:100%;border:1px solid #2b3548;background:#0c111c;color:#fff;border-radius:12px;padding:14px;font:inherit;outline:none}.field textarea{min-height:360px;resize:vertical;line-height:1.7}.field input:focus,.field textarea:focus{border-color:var(--cyan)}
+    .steps{border-left:1px solid var(--line);padding-left:26px}.step{padding:0 0 28px;color:#657086}.step strong{display:block;color:#aab4c8;margin-bottom:6px}.step.active strong{color:var(--cyan)}
+    .plan-list{max-width:1000px}.plan-item{display:grid;grid-template-columns:54px 180px minmax(0,1fr) 80px;gap:18px;padding:20px 0;border-bottom:1px solid var(--line);align-items:start}.plan-no{font:700 12px inherit;color:var(--cyan)}.plan-item input,.plan-item textarea{width:100%;background:transparent;color:#fff;border:0;border-bottom:1px solid #313b4d;padding:5px 2px;font:inherit;resize:vertical}.plan-item textarea{min-height:72px;line-height:1.55}.plan-purpose{font-size:11px;color:var(--muted);margin-top:8px}.plan-actions{position:sticky;bottom:0;background:#080b12e8;backdrop-filter:blur(12px);padding:18px 0;display:flex;justify-content:flex-end;gap:10px}
+    .editor-nav{display:flex;align-items:center;gap:12px}.editor-nav-title{font-size:12px;color:var(--muted)}
+    @media(max-width:760px){.studio-view{padding:28px 18px}.view-head,.create-layout{display:block}.view-head .studio-btn{margin-top:18px}.steps{display:none}.project-row{grid-template-columns:1fr 28px}.project-row>:nth-child(2),.project-row>:nth-child(3){display:none}.plan-item{grid-template-columns:34px 1fr}.plan-item>:nth-child(3),.plan-item>:nth-child(4){grid-column:2}}
   </style>
 </head>
 
 <body>
-  <div class="app">
+  <div class="studio-shell" id="studioShell">
+    <header class="studio-top"><div class="studio-brand">FRAME<span>AI</span></div><div class="editor-nav"><span class="editor-nav-title" id="currentProjectTitle"></span><button class="studio-btn" id="backProjects">← Projects</button></div></header>
+    <main class="studio-view" id="projectsView">
+      <div class="view-head"><div><h2>Projects</h2><p>Mỗi project là một file JSON độc lập, sẵn sàng để tiếp tục từ đúng trạng thái gần nhất.</p></div><button class="studio-btn primary" id="newProject">+ Tạo project</button></div>
+      <div id="projectRows"></div>
+    </main>
+    <main class="studio-view" id="createView" hidden>
+      <div class="view-head"><div><h2>Project mới</h2><p>Đưa kịch bản thô vào đây. AI sẽ chia nội dung thành các màn để bạn duyệt trước khi dựng khung edit.</p></div></div>
+      <div class="create-layout"><div><div class="field"><label>Tên project</label><input id="projectTitle" placeholder="Ví dụ: 5 cách xây kênh cá nhân"></div><div class="field"><label>Kịch bản</label><textarea id="projectScript" placeholder="Dán toàn bộ kịch bản video..."></textarea></div><button class="studio-btn primary" id="analyzeScript">Phân tích kịch bản với ChatGPT →</button></div><aside class="steps"><div class="step active"><strong>01 · Kịch bản</strong>Nguồn nội dung gốc</div><div class="step"><strong>02 · Nội dung các màn</strong>AI đề xuất, bạn chỉnh sửa</div><div class="step"><strong>03 · Khung edit</strong>AI tạo layout và layers</div></aside></div>
+    </main>
+    <main class="studio-view" id="planView" hidden>
+      <div class="view-head"><div><h2>Duyệt nội dung</h2><p>Chỉnh trực tiếp tiêu đề, nội dung và thời lượng. Khi xác nhận, ChatGPT mới bắt đầu tạo khung edit.</p></div></div>
+      <div class="plan-list" id="planList"></div><div class="plan-actions"><button class="studio-btn" id="savePlan">Lưu nháp</button><button class="studio-btn primary" id="confirmPlan">Xác nhận & tạo khung edit →</button></div>
+    </main>
+  </div>
+  <div class="app" id="editorApp" hidden>
     <section class="left">
       <h1>Social Algorithm — AI Video Editor</h1>
       <div class="sub">Video dọc 9:16 • sửa chữ trực tiếp • đồng bộ scene với ChatGPT qua MCP.</div>
@@ -758,6 +789,7 @@
     const c = document.getElementById('c'), ctx = c.getContext('2d'), W = c.width, H = c.height, $ = id => document.getElementById(id); let t = 0, playing = false, last = 0, audioEl = null, audioUrl = null, hitBoxes = [], selected = null, editing = false;
     // ---- MCP Apps host bridge (standard ui/* postMessage + ChatGPT compatibility fallback) ----
     let hostConnected = false, syncTimer = null, bridgeMode = "standalone";
+    let activeProject = null, routeOnApply = false;
     let projectVersion = 0, lastMutation = null, aiWatchTimer = null, aiWatchUntil = 0, aiWatchBaseVersion = 0, pulling = false;
     let pendingSyncTask = null, syncInFlight = Promise.resolve();
     let hostResizeObserver = null, hostResizeRaf = 0, lastReportedSize = { width: 0, height: 0 }, startupPhase = true, startupTimer = null;
@@ -792,12 +824,62 @@
     }
     function host() { return typeof window !== "undefined" ? window.openai : undefined }
     function setServerState(text, ok = true) { const el = $('serverState'); if (!el) return; el.innerHTML = `<span class="sync-dot ${ok ? '' : 'off'}"></span>${text}` }
+    function showStudioView(id) {
+      ['projectsView','createView','planView'].forEach(x => $(x).hidden = x !== id);
+      $('studioShell').hidden = false; $('editorApp').hidden = true; requestHostResize();
+    }
+    function showEditor() { $('studioShell').hidden = false; ['projectsView','createView','planView'].forEach(x => $(x).hidden = true); $('editorApp').hidden = false; requestHostResize(); }
+    function statusLabel(status) { return ({planning:'Đang chờ AI',review:'Chờ xác nhận',ready:'Sẵn sàng edit'})[status] || 'Sẵn sàng edit' }
+    async function getProjectList() {
+      const mode = await ensureHost();
+      if (mode) { const r = await callHostTool('list_video_projects', {}); return r?.structuredContent || r || {}; }
+      const r = await fetch('/api/projects'); return r.json();
+    }
+    async function renderProjectList() {
+      showStudioView('projectsView');
+      try {
+        const data = await getProjectList(), rows = data.projects || [];
+        $('projectRows').innerHTML = rows.map(p => `<div class="project-row" data-project="${p.id}"><div><h3>${p.title}</h3><div class="project-meta">${p.sceneCount} màn · JSON v${p.version}</div></div><div class="project-state">${statusLabel(p.status)}</div><div class="project-meta">${p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('vi-VN') : ''}</div><div class="arrow">→</div></div>`).join('') || '<div class="project-meta" style="padding:32px 0">Chưa có project.</div>';
+        document.querySelectorAll('[data-project]').forEach(el => el.onclick = () => openStoredProject(el.dataset.project));
+      } catch (e) { $('projectRows').innerHTML = `<div class="project-meta" style="padding:32px 0">Không tải được project: ${e.message}</div>`; }
+    }
+    async function openStoredProject(id) {
+      routeOnApply = true;
+      const mode = await ensureHost();
+      if (mode) await callHostTool('select_video_project', { project_id:id });
+      else { const r = await fetch('/api/projects/' + encodeURIComponent(id)); const data = await r.json(); if (data.project) applyProject(data.project); }
+    }
+    function renderPlan(project) {
+      activeProject = project; $('currentProjectTitle').textContent = project.title;
+      const plan = project.workflow?.contentPlan || [];
+      $('planList').innerHTML = plan.map((item,i) => `<div class="plan-item" data-plan="${i}"><div class="plan-no">${String(i+1).padStart(2,'0')}</div><div><input data-key="title" value="${String(item.title).replace(/"/g,'&quot;')}"><div class="plan-purpose">${item.purpose || 'Màn nội dung'}</div></div><textarea data-key="content">${item.content || ''}</textarea><div><input data-key="duration" type="number" min="1" max="30" value="${item.duration || 4}"><div class="plan-purpose">giây</div></div></div>`).join('');
+      showStudioView('planView');
+    }
+    function collectPlan() { return [...document.querySelectorAll('[data-plan]')].map((row,i) => { const old = activeProject.workflow.contentPlan[i]; return { ...old, id:old.id || `scene-${i+1}`, title:row.querySelector('[data-key=title]').value.trim(), content:row.querySelector('[data-key=content]').value.trim(), duration:+row.querySelector('[data-key=duration]').value || 4 }; }); }
+    async function persistPlan() {
+      activeProject.workflow.contentPlan = collectPlan();
+      const mode = await ensureHost();
+      if (mode) await callHostTool('set_project_content_plan', { project_id:activeProject.id, content_plan:activeProject.workflow.contentPlan });
+      else { const r = await fetch('/api/projects/'+encodeURIComponent(activeProject.id), {method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({project:activeProject})}); const d=await r.json(); if(d.project) activeProject=d.project; }
+    }
+    async function createProjectFlow() {
+      const title=$('projectTitle').value.trim(), script=$('projectScript').value.trim();
+      if(!title || script.length<20) { alert('Vui lòng nhập tên project và kịch bản tối thiểu 20 ký tự.'); return; }
+      $('analyzeScript').disabled=true; $('analyzeScript').textContent='Đang tạo project…'; routeOnApply=true;
+      const mode=await ensureHost(); let project;
+      if(mode){ const r=await callHostTool('create_video_project',{title,script}); project=r?.structuredContent?.project; }
+      else { const r=await fetch('/api/projects',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({title,script})}); project=(await r.json()).project; }
+      if(project){ activeProject=project; applyProject(project); const prompt=`Hãy phân tích kịch bản của project ${project.id} thành các màn video 9:16. Gọi tool set_project_content_plan để lưu đề xuất. Mỗi màn cần title, purpose, content ngắn gọn dễ đọc và duration. Chưa tạo layout/layers ở bước này. Kịch bản:\n${script}`; if(mode){ await (mode==='mcp'?mcpBridge.sendMessage(prompt):host().sendFollowUpMessage({prompt})); startAiWatch(project.version); } else { alert('Project đã lưu. Mở editor qua ChatGPT MCP để AI phân tích kịch bản.'); } }
+      $('analyzeScript').disabled=false; $('analyzeScript').textContent='Phân tích kịch bản với ChatGPT →';
+    }
     function finishStartupSoon(delay = 900) {
       clearTimeout(startupTimer);
       startupTimer = setTimeout(() => { startupPhase = false }, delay);
     }
     function applyProject(project) {
       if (!project?.scenes?.length) return;
+      activeProject = JSON.parse(JSON.stringify(project));
+      $('currentProjectTitle').textContent = project.title || '';
       const currentId = scenes[currentSceneIndex()]?.id;
       scenes = JSON.parse(JSON.stringify(project.scenes));
       projectVersion = Number(project.version || 0);
@@ -809,6 +891,12 @@
       rebuild(); render(); updateTools(); updateAiContext(); requestHostResize(); finishStartupSoon();
       setTimeout(() => updateModelContext(), startupPhase ? 220 : 0);
       setServerState(`Đã nhận project v${projectVersion} từ MCP · ${bridgeMode}`, true)
+      if (routeOnApply) {
+        const status = project.workflow?.status || 'ready';
+        if (status === 'review') renderPlan(project);
+        else if (status === 'ready') showEditor();
+        else showStudioView('createView');
+      }
     }
     function updateFromHostResult(result) {
       const payload = result?.structuredContent || result || {};
@@ -1007,7 +1095,7 @@
     window.addEventListener("openai:set_globals", () => { if (host()?.toolOutput) updateFromHostResult({ structuredContent: host().toolOutput }); bridgeMode = "window.openai fallback"; hostConnected = true; setServerState("Đã kết nối ChatGPT compatibility bridge.", true) });
     function totalDur() { return scenes.reduce((a, s) => a + Math.max(.2, +s.duration || 0), 0) } function fmt(x) { x = Math.max(0, x); let m = Math.floor(x / 60), s = Math.floor(x % 60); return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') } function bounds() { let acc = 0; return scenes.map((s, i) => { let a = acc, b = acc + (+s.duration || 0); acc = b; return { i, a, b } }) } function sceneAt(time) { let b = bounds(); return b.find(x => time >= x.a && time < x.b) || b[b.length - 1] } function clamp(x, a = 0, b = 1) { return Math.max(a, Math.min(b, x)) } function easeOut(x) { return 1 - Math.pow(1 - clamp(x), 3) } function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r) }
     function fitFont(text, maxW, size, weight) { let s = size; ctx.font = `${weight} ${s}px "Be Vietnam Pro",sans-serif`; while (ctx.measureText(text).width > maxW && s > 12) { s--; ctx.font = `${weight} ${s}px "Be Vietnam Pro",sans-serif` } return s }
-    function drawLayer(sceneIndex, layerIndex, alpha = 1) { const l = scenes[sceneIndex].layers[layerIndex], lines = String(l.text).split('\n'); let size = fitFont(lines.reduce((a, b) => a.length > b.length ? a : b, ''), l.maxWidth || 460, +l.size || 30, +l.weight || 700); ctx.save(); ctx.globalAlpha = alpha; ctx.font = `${l.weight} ${size}px "Be Vietnam Pro",sans-serif`; ctx.fillStyle = l.color; ctx.textBaseline = 'middle'; ctx.textAlign = l.align || 'center'; const lineH = size * 1.18, totalH = lineH * lines.length; let maxW = 0; for (const line of lines) maxW = Math.max(maxW, ctx.measureText(line).width); lines.forEach((line, i) => ctx.fillText(line, l.x, l.y + (i - (lines.length - 1) / 2) * lineH)); ctx.restore(); let left = l.align === 'left' ? l.x : (l.align === 'right' ? l.x - maxW : l.x - maxW / 2); hitBoxes.push({ sceneIndex, layerIndex, x: left - 10, y: l.y - totalH / 2 - 8, w: maxW + 20, h: totalH + 16 }); }
+    function drawLayer(sceneIndex, layerIndex, alpha = 1) { const l = scenes[sceneIndex]?.layers?.[layerIndex]; if (!l) return; const lines = String(l.text).split('\n'); let size = fitFont(lines.reduce((a, b) => a.length > b.length ? a : b, ''), l.maxWidth || 460, +l.size || 30, +l.weight || 700); ctx.save(); ctx.globalAlpha = alpha; ctx.font = `${l.weight} ${size}px "Be Vietnam Pro",sans-serif`; ctx.fillStyle = l.color; ctx.textBaseline = 'middle'; ctx.textAlign = l.align || 'center'; const lineH = size * 1.18, totalH = lineH * lines.length; let maxW = 0; for (const line of lines) maxW = Math.max(maxW, ctx.measureText(line).width); lines.forEach((line, i) => ctx.fillText(line, l.x, l.y + (i - (lines.length - 1) / 2) * lineH)); ctx.restore(); let left = l.align === 'left' ? l.x : (l.align === 'right' ? l.x - maxW : l.x - maxW / 2); hitBoxes.push({ sceneIndex, layerIndex, x: left - 10, y: l.y - totalH / 2 - 8, w: maxW + 20, h: totalH + 16 }); }
     function bg(accent = '#64e7ff') { ctx.fillStyle = '#070a11'; ctx.fillRect(0, 0, W, H); let g = ctx.createRadialGradient(W * .15, H * .15, 20, W * .15, H * .15, 450); g.addColorStop(0, accent + '24'); g.addColorStop(1, '#00000000'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.strokeStyle = '#ffffff09'; for (let y = 110; y < H; y += 70) { ctx.beginPath(); ctx.moveTo(28, y); ctx.lineTo(W - 28, y); ctx.stroke() } for (let x = 48; x < W; x += 74) { ctx.beginPath(); ctx.moveTo(x, 100); ctx.lineTo(x, H - 50); ctx.stroke() } ctx.fillStyle = '#8792a8'; ctx.font = '600 17px "Be Vietnam Pro"'; ctx.textAlign = 'left'; ctx.fillText('SOCIAL ALGORITHM', 28, 48); ctx.textAlign = 'right'; ctx.fillText('9:16', W - 28, 48) }
     function pill(x, y, w, h, color) { ctx.fillStyle = color + '20'; ctx.strokeStyle = color + '70'; ctx.lineWidth = 2; rr(x, y, w, h, h / 2); ctx.fill(); ctx.stroke() }
     function drawScene(sceneIndex, p) {
@@ -1044,9 +1132,21 @@
     $('pullLatest').onclick = () => pullLatestProject('button');
     $('askWhole').onclick = () => sendAiPrompt('', true);
     $('fullscreen').onclick = async () => { try { const mode = await ensureHost(); if (mode === 'mcp') await mcpBridge.requestDisplayMode('fullscreen'); else if (mode === 'openai' && host()?.requestDisplayMode) await host().requestDisplayMode({ mode: 'fullscreen' }); else setServerState('Fullscreen chỉ có khi widget được ChatGPT render từ MCP tool.', false) } catch (e) { setServerState('Không mở được fullscreen: ' + (e?.message || e), false) } };
+    $('newProject').onclick=()=>showStudioView('createView');
+    $('backProjects').onclick=()=>{routeOnApply=false;renderProjectList()};
+    $('analyzeScript').onclick=createProjectFlow;
+    $('savePlan').onclick=async()=>{await persistPlan();$('savePlan').textContent='Đã lưu';setTimeout(()=>$('savePlan').textContent='Lưu nháp',1200)};
+    $('confirmPlan').onclick=async()=>{
+      await persistPlan(); const plan=activeProject.workflow.contentPlan, mode=await ensureHost();
+      if(!mode){alert('Nội dung đã lưu. Mở project trong ChatGPT MCP để AI tạo khung edit.');return}
+      $('confirmPlan').disabled=true;$('confirmPlan').textContent='Đang nhờ ChatGPT tạo…';
+      const prompt=`Tôi đã xác nhận content plan của project ${activeProject.id}. Hãy gọi generate_project_edit để tạo khung edit hoàn chỉnh. Dùng đúng content_plan bên dưới và tạo scenes 9:16 với layers có id/text/x/y/size/color/weight/align/maxWidth. Chọn type phù hợp trong: hook, first, signals, ladder, stop, goal, niche, formula. Giữ chữ ngắn, vùng x 0-540, y 0-960. Content plan:\n${JSON.stringify(plan)}`;
+      await (mode==='mcp'?mcpBridge.sendMessage(prompt):host().sendFollowUpMessage({prompt})); routeOnApply=true; startAiWatch(activeProject.version);
+      $('confirmPlan').disabled=false;$('confirmPlan').textContent='Đang chờ AI cập nhật khung edit…';
+    };
     window.addEventListener("focus", () => { if (!editing && hostConnected) pullLatestProject("focus") });
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !editing && hostConnected) pullLatestProject("visible") });
-    rebuild(); render(); updateTools(); finishStartupSoon(); initHost();
+    rebuild(); render(); updateTools(); finishStartupSoon(); initHost(); renderProjectList();
   </script>
 </body>
 
