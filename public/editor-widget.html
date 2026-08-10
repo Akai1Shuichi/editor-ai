@@ -1405,6 +1405,9 @@
       let activeProject = null,
         routeOnApply = false;
       let pendingProjectId = null;
+      let requestedProjectId = null,
+        currentStudioView = "projectsView";
+      const projectViewState = new Map();
       let projectVersion = 0,
         lastMutation = null,
         aiWatchTimer = null,
@@ -1483,6 +1486,8 @@
         el.innerHTML = `<span class="sync-dot ${ok ? "" : "off"}"></span>${escapeHtml(text)}`;
       }
       function showStudioView(id) {
+        currentStudioView = id;
+        if (activeProject?.id) projectViewState.set(activeProject.id, id);
         ["projectsView", "createView", "planView"].forEach(
           (x) => ($(x).hidden = x !== id),
         );
@@ -1491,12 +1496,23 @@
         requestHostResize();
       }
       function showEditor() {
+        currentStudioView = "editorView";
+        if (activeProject?.id) projectViewState.set(activeProject.id, "editorView");
         $("studioShell").hidden = false;
         ["projectsView", "createView", "planView"].forEach(
           (x) => ($(x).hidden = true),
         );
         $("editorApp").hidden = false;
         requestHostResize();
+      }
+      function defaultViewForProject(project) {
+        const status = project?.workflow?.status || "ready";
+        if (status === "ready" && project?.scenes?.length) return "editorView";
+        if (status === "review" || status === "planning") return "planView";
+        return "createView";
+      }
+      function viewForProject(project) {
+        return projectViewState.get(project?.id) || defaultViewForProject(project);
       }
       function statusLabel(status) {
         return (
@@ -1560,6 +1576,7 @@
       }
       async function openStoredProject(id) {
         pendingProjectId = null;
+        requestedProjectId = id;
         routeOnApply = true;
         const mode = await ensureHost();
         if (mode)
@@ -1647,6 +1664,7 @@
         $("analyzeScript").disabled = true;
         $("analyzeScript").textContent = "Đang tạo project…";
         routeOnApply = true;
+        requestedProjectId = null;
         const mode = await ensureHost();
         let project;
         if (mode) {
@@ -1666,7 +1684,9 @@
         }
         if (project) {
           pendingProjectId = project.id;
+          requestedProjectId = project.id;
           activeProject = project;
+          projectViewState.set(project.id, "planView");
           renderPlan(project);
           const prompt = `Bạn có thể dùng khả năng của ChatGPT để mở/đọc/phân tích link nguồn nếu có. Chỉ dùng Video Editor app tools ở bước ghi kết quả vào project JSON.
 
@@ -1730,6 +1750,7 @@ ${script}`;
       }
       function applyProject(project) {
         if (pendingProjectId && project?.id && project.id !== pendingProjectId) return;
+        if (requestedProjectId && project?.id && project.id !== requestedProjectId) return;
         const previousProjectId = activeProject?.id || null;
         const incomingPlanCount = project?.workflow?.contentPlan?.length || 0;
         const previousPlanCount = activeProject?.workflow?.contentPlan?.length || 0;
@@ -1771,7 +1792,6 @@ ${script}`;
           true,
         );
         const planViewOpen = !$("planView").hidden;
-        const sameProjectAsBefore = previousProjectId && previousProjectId === project.id;
         if (
           incomingStatus === "review" &&
           incomingPlanCount > 0 &&
@@ -1783,13 +1803,9 @@ ${script}`;
           return;
         }
         if (routeOnApply) {
-          const status = project.workflow?.status || "ready";
-          if (status === "review") {
-            if (project.id === pendingProjectId) pendingProjectId = null;
-            renderPlan(project);
-          }
-          else if (status === "planning") renderPlan(project);
-          else if (status === "ready") showEditor();
+          const targetView = viewForProject(project);
+          if (targetView === "editorView") showEditor();
+          else if (targetView === "planView") renderPlan(project);
           else showStudioView("createView");
         }
       }
@@ -2011,7 +2027,8 @@ ${script}`;
         pulling = true;
         try {
           const before = projectVersion;
-          const res = await callHostTool("get_video_project", {});
+          const projectId = requestedProjectId || activeProject?.id || pendingProjectId || null;
+          const res = await callHostTool("get_video_project", projectId ? { project_id: projectId } : {});
           const p = res?.structuredContent?.project || res?.project;
           if (p) {
             const v = Number(p.version || 0);
@@ -2149,6 +2166,7 @@ ${script}`;
           const sc = sceneSnapshot(index);
           if (!sc) return null;
           return callHostTool("update_scene", {
+            project_id: activeProject?.id,
             scene_id: sc.id,
             duration: sc.duration,
             client_origin: "widget",
@@ -2161,6 +2179,7 @@ ${script}`;
             layer = sc?.layers?.[layerIndex];
           if (!sc || !layer) return null;
           return callHostTool("update_text_layer", {
+            project_id: activeProject?.id,
             scene_id: sc.id,
             layer_id: layer.id,
             text: layer.text,
@@ -3152,7 +3171,9 @@ ${script}`;
         closeInlineEditor(false);
         const mode = await ensureHost();
         if (mode) {
-          await callHostTool("reset_video_project", {});
+          await callHostTool("reset_video_project", {
+            project_id: activeProject?.id,
+          });
         } else {
           scenes = JSON.parse(JSON.stringify(baseScenes));
           t = 0;
@@ -3405,10 +3426,12 @@ ${script}`;
       };
       $("newProject").onclick = () => {
         pendingProjectId = null;
+        requestedProjectId = null;
         showStudioView("createView");
       };
       $("backProjects").onclick = () => {
         pendingProjectId = null;
+        requestedProjectId = activeProject?.id || null;
         routeOnApply = false;
         renderProjectList();
       };

@@ -7,6 +7,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
+import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
@@ -58,6 +59,7 @@ function normalizeProject(project) {
 const safeId = (value) => String(value || "project").toLowerCase().normalize("NFD")
   .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || "project";
 const projectPath = (id) => join(PROJECTS_DIR, `${safeId(id)}.json`);
+const createProjectId = () => randomUUID();
 function readProject(id) {
   const path = projectPath(id);
   if (!existsSync(path)) return null;
@@ -87,34 +89,36 @@ function emptyProject() {
 if (!existsSync(projectPath(defaultProject.id))) writeFileSync(projectPath(defaultProject.id), JSON.stringify(initialProject(), null, 2));
 let activeProjectId = existsSync(ACTIVE_FILE) ? readFileSync(ACTIVE_FILE, "utf8").trim() : defaultProject.id;
 if (!existsSync(projectPath(activeProjectId))) activeProjectId = defaultProject.id;
-let projectStore = readProject(activeProjectId);
 function listProjects() {
   return readdirSync(PROJECTS_DIR).filter((name) => name.endsWith(".json")).map((name) => {
     const p = JSON.parse(readFileSync(join(PROJECTS_DIR, name), "utf8"));
     return { id: p.id, title: p.title, version: p.version, updatedAt: p.updatedAt, status: p.workflow?.status || "ready", sceneCount: p.scenes?.length || 0 };
   }).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
 }
-function getProject(_extra) {
-  return normalizeProject(projectStore);
+function resolveProjectId(projectId) {
+  const requestedId = String(projectId || "").trim();
+  return requestedId || activeProjectId || defaultProject.id;
 }
-function saveProject(_extra, project) {
+function getProject(projectId) {
+  const resolvedId = resolveProjectId(projectId);
+  const project = readProject(resolvedId);
+  return project || readProject(defaultProject.id) || initialProject();
+}
+function saveProject(project) {
   const stored = readProject(project.id);
   const normalized = normalizeProject(project);
   normalized.version = (stored?.version ?? normalized.version ?? 0) + 1;
   normalized.updatedAt = new Date().toISOString();
-  projectStore = normalized;
-  activeProjectId = normalized.id;
   writeFileSync(projectPath(normalized.id), JSON.stringify(normalized, null, 2));
-  writeFileSync(ACTIVE_FILE, normalized.id);
-  return projectStore;
+  return normalized;
 }
 function selectProject(id) {
   const path = projectPath(id);
   if (!existsSync(path)) return null;
-  projectStore = readProject(id);
-  activeProjectId = projectStore.id;
+  const project = readProject(id);
+  activeProjectId = project.id;
   writeFileSync(ACTIVE_FILE, activeProjectId);
-  return projectStore;
+  return project;
 }
 
 const layerSchema = z.object({
@@ -190,6 +194,9 @@ function getMutationSource(args = {}) {
   if (args?.client_origin === "system") return "system";
   return "model";
 }
+function getRequestedProjectId(args = {}, fallbackId = "") {
+  return String(args?.project_id || fallbackId || "").trim();
+}
 
 function reply(project, message, mutation) {
   return {
@@ -239,7 +246,7 @@ function createVideoEditorServer() {
     {
       title: "Open video editor",
       description: "Open the interactive short-video editor and show the current project state.",
-      inputSchema: {},
+      inputSchema: { project_id: z.string().optional() },
       outputSchema,
       annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
       _meta: {
@@ -248,7 +255,7 @@ function createVideoEditorServer() {
         "openai/toolInvocation/invoked": "Video editor ready",
       },
     },
-    async (_args, extra) => reply(getProject(extra), "Opened the current video project."),
+    async (args) => reply(getProject(args.project_id), "Opened the current video project."),
   );
 
   registerAppTool(
@@ -257,7 +264,7 @@ function createVideoEditorServer() {
     {
       title: "Get video project",
       description: "Read the complete current video project, including scene durations and all text layers. Use this before broad multi-scene edits.",
-      inputSchema: {},
+      inputSchema: { project_id: z.string().optional() },
       outputSchema,
       annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
       // registerAppTool currently expects an _meta object even when this tool
@@ -273,7 +280,7 @@ function createVideoEditorServer() {
     // the real "model" mutation with a fake "system/read" one on every poll,
     // which breaks completion detection. Reads stay silent; only real writes
     // (update_text_layer/update_scene/reset_video_project) report a mutation.
-    async (_args, extra) => reply(getProject(extra), "Current video project loaded."),
+    async (args) => reply(getProject(args.project_id), "Current video project loaded."),
   );
 
   registerAppTool(
@@ -284,6 +291,7 @@ function createVideoEditorServer() {
       description: "Update one text layer in one scene. Best for rewriting, translating, shortening, or restyling (size/position/weight/align/color) a headline or keyword without disturbing other layers. You MUST call this tool to actually apply any text change — including translations — the user's video is not updated until you do. Call it once per layer that needs to change.",
       inputSchema: {
         scene_id: z.string(),
+        project_id: z.string().optional(),
         layer_id: z.string(),
         client_origin: z.enum(["widget", "system"]).optional(),
         text: z.string().optional(),
@@ -304,8 +312,8 @@ function createVideoEditorServer() {
         "openai/toolInvocation/invoked": "Text updated",
       },
     },
-    async (args, extra) => {
-      const project = clone(getProject(extra));
+    async (args) => {
+      const project = clone(getProject(args.project_id));
       const scene = project.scenes.find((s) => s.id === args.scene_id);
       if (!scene) return reply(project, `Scene ${args.scene_id} was not found.`);
       const layer = scene.layers.find((l) => l.id === args.layer_id);
@@ -313,7 +321,7 @@ function createVideoEditorServer() {
       for (const key of ["text", "x", "y", "size", "color", "weight", "align", "maxWidth"]) {
         if (args[key] !== undefined) layer[key] = args[key];
       }
-      const saved = saveProject(extra, project);
+      const saved = saveProject(project);
       return reply(saved, `Updated ${args.scene_id}/${args.layer_id}.`, {
         source: getMutationSource(args),
         scope: "layer",
@@ -332,6 +340,7 @@ function createVideoEditorServer() {
       description: "Update a scene duration/title/type and/or multiple existing text layers at once (e.g. translating every layer in a scene in one call via layer_updates). Preserve the scene ID and existing layer IDs. You MUST call this tool (or update_text_layer) to actually apply the change — the user's video is not updated until you do.",
       inputSchema: {
         scene_id: z.string(),
+        project_id: z.string().optional(),
         client_origin: z.enum(["widget", "system"]).optional(),
         title: z.string().optional(),
         duration: z.number().min(0.5).max(30).optional(),
@@ -347,8 +356,8 @@ function createVideoEditorServer() {
         "openai/toolInvocation/invoked": "Scene updated",
       },
     },
-    async (args, extra) => {
-      const project = clone(getProject(extra));
+    async (args) => {
+      const project = clone(getProject(args.project_id));
       const scene = project.scenes.find((s) => s.id === args.scene_id);
       if (!scene) return reply(project, `Scene ${args.scene_id} was not found.`);
       if (args.title !== undefined) scene.title = args.title;
@@ -361,7 +370,7 @@ function createVideoEditorServer() {
           if (patch[key] !== undefined) layer[key] = patch[key];
         }
       }
-      const saved = saveProject(extra, project);
+      const saved = saveProject(project);
       return reply(saved, `Updated scene ${args.scene_id}.`, {
         source: getMutationSource(args),
         scope: "scene",
@@ -377,7 +386,7 @@ function createVideoEditorServer() {
     {
       title: "Reset video project",
       description: "Reset the current project. The default sample project returns to its original 8-scene template; generated projects keep their own workflow/script/style data and clear generated scenes.",
-      inputSchema: {},
+      inputSchema: { project_id: z.string().optional() },
       outputSchema,
       annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false, idempotentHint: true },
       _meta: {
@@ -387,8 +396,8 @@ function createVideoEditorServer() {
         "openai/toolInvocation/invoked": "Project reset",
       },
     },
-    async (_args, extra) => {
-      const current = clone(getProject(extra));
+    async (args) => {
+      const current = clone(getProject(args.project_id));
       const project = current.id === defaultProject.id ? initialProject() : emptyProject();
       project.id = current.id;
       project.title = current.title;
@@ -397,7 +406,7 @@ function createVideoEditorServer() {
         ...(current.workflow || {}),
         status: current.id === defaultProject.id ? "ready" : ((current.workflow?.contentPlan?.length || 0) ? "review" : "planning"),
       };
-      const saved = saveProject(extra, project);
+      const saved = saveProject(project);
       return reply(saved, current.id === defaultProject.id ? "Video project reset to the original template." : "Generated scenes cleared. Workflow/script/style were kept for this project.", {
         source: "system",
         scope: "project",
@@ -424,13 +433,14 @@ function createVideoEditorServer() {
   }, async (args, extra) => {
     const script = synthesizeSourceScript(args.script, args.source_url);
     const sourceUrl = String(args.source_url || "").trim();
-    if (script.length < 20 && !sourceUrl) return reply(getProject(extra), "Provide either a source script of at least 20 characters or a source video URL.");
-    let id = safeId(args.title), suffix = 2;
-    while (existsSync(projectPath(id))) id = `${safeId(args.title)}-${suffix++}`;
+    if (script.length < 20 && !sourceUrl) return reply(getProject(), "Provide either a source script of at least 20 characters or a source video URL.");
+    const id = createProjectId();
     const project = emptyProject();
     project.id = id; project.title = args.title; project.version = 0;
     project.workflow = { status: "planning", script, sourceUrl, contentPlan: [], styleEdit: clone(styleEditPreset) };
-    const saved = saveProject(extra, project);
+    activeProjectId = id;
+    writeFileSync(ACTIVE_FILE, activeProjectId);
+    const saved = saveProject(project);
     return reply(saved, `Created ${id}. Analyze workflow.script/workflow.sourceUrl while following workflow.styleEdit, then call set_project_content_plan.`);
   });
 
@@ -451,11 +461,10 @@ function createVideoEditorServer() {
     inputSchema: { project_id: z.string(), content_plan: z.array(planItemSchema).min(1).max(20) }, outputSchema,
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     _meta: { ui: { visibility: ["model", "app"] }, "openai/widgetAccessible": true },
-  }, async (args, extra) => {
-    if (getProject().id !== args.project_id) selectProject(args.project_id);
-    const project = clone(getProject(extra));
+  }, async (args) => {
+    const project = clone(getProject(args.project_id));
     project.workflow = { ...(project.workflow || {}), status: "review", contentPlan: args.content_plan };
-    return reply(saveProject(extra, project), "Content plan saved. Ask the user to review and confirm it before generating the edit.");
+    return reply(saveProject(project), "Content plan saved. Ask the user to review and confirm it before generating the edit.");
   });
 
   registerAppTool(server, "generate_project_edit", {
@@ -464,12 +473,11 @@ function createVideoEditorServer() {
     inputSchema: { project_id: z.string(), content_plan: z.array(planItemSchema).min(1).max(20), scenes: z.array(sceneSchema).min(1).max(20) }, outputSchema,
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     _meta: { ui: { visibility: ["model", "app"] }, "openai/widgetAccessible": true },
-  }, async (args, extra) => {
-    if (getProject().id !== args.project_id) selectProject(args.project_id);
-    const project = clone(getProject(extra));
+  }, async (args) => {
+    const project = clone(getProject(args.project_id));
     project.scenes = args.scenes;
     project.workflow = { ...(project.workflow || {}), status: "ready", contentPlan: args.content_plan };
-    const saved = saveProject(extra, project);
+    const saved = saveProject(project);
     return reply(saved, "Final edit generated and saved to the project JSON.", { source: "model", scope: "project", version: saved.version });
   });
 
@@ -516,25 +524,25 @@ const httpServer = createServer(async (req, res) => {
       const script = synthesizeSourceScript(args.script, args.source_url);
       const sourceUrl = String(args.source_url || "").trim();
       if (!title || (script.length < 20 && !sourceUrl)) return sendJson(res, 400, { error: "Cần tên project và ít nhất một trong hai: kịch bản từ 20 ký tự hoặc link nguồn video." });
-      let id = safeId(args.title), suffix = 2;
-      while (existsSync(projectPath(id))) id = `${safeId(args.title)}-${suffix++}`;
+      const id = createProjectId();
       const project = emptyProject();
       project.id = id; project.title = title; project.version = 0;
       project.workflow = { status: "planning", script, sourceUrl, contentPlan: [], styleEdit: clone(styleEditPreset) };
-      return sendJson(res, 201, { project: saveProject(null, project) });
+      activeProjectId = id;
+      writeFileSync(ACTIVE_FILE, activeProjectId);
+      return sendJson(res, 201, { project: saveProject(project) });
     } catch (error) { return sendJson(res, 400, { error: error.message }); }
   }
   const projectMatch = url.pathname.match(/^\/api\/projects\/([^/]+)$/);
   if (projectMatch && req.method === "GET") {
-    const project = selectProject(decodeURIComponent(projectMatch[1]));
+    const project = readProject(decodeURIComponent(projectMatch[1]));
     return project ? sendJson(res, 200, { project }) : sendJson(res, 404, { error: "Project không tồn tại." });
   }
   if (projectMatch && req.method === "PUT") {
     try {
       const { project } = await readJson(req);
       if (!project || safeId(project.id) !== safeId(decodeURIComponent(projectMatch[1]))) return sendJson(res, 400, { error: "Project không hợp lệ." });
-      if (getProject().id !== project.id) selectProject(project.id);
-      return sendJson(res, 200, { project: saveProject(null, project) });
+      return sendJson(res, 200, { project: saveProject(project) });
     } catch (error) { return sendJson(res, 400, { error: error.message }); }
   }
 
