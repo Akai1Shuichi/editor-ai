@@ -783,6 +783,7 @@
     </section>
   </div>
   <script>
+    const SAMPLE_PROJECT_ID = 'social-algorithm-short';
     const mk = (id, text, x, y, size, color = '#f7f9ff', weight = 800, align = 'center', maxWidth = 460) => ({ id, text, x, y, size, color, weight, align, maxWidth });
     const baseScenes = [
       { title: 'HOOK', duration: 4, type: 'hook', layers: [mk('hook1', 'THUẬT TOÁN MẠNG XÃ HỘI', 270, 315, 48), mk('hook2', 'HOẠT ĐỘNG RA SAO?', 270, 385, 52, '#64e7ff'), mk('hook3', 'Không phải “hack”. Là cách phân phối nội dung.', 270, 640, 20, '#8f9bb3', 500)] },
@@ -842,6 +843,8 @@
     function statusLabel(status) { return ({planning:'Đang chờ AI',review:'Chờ xác nhận',ready:'Sẵn sàng edit'})[status] || 'Sẵn sàng edit' }
     function escapeAttr(v) { return escapeHtml(v).replace(/'/g, '&#39;') }
     function stylePrompt(project = activeProject) { return String(project?.workflow?.styleEdit?.prompt || '').trim() }
+    function isSampleProject(project = activeProject) { return (project?.id || '') === SAMPLE_PROJECT_ID }
+    function hasScenes() { return Array.isArray(scenes) && scenes.length > 0 }
     function updateWorkflowCard(kind, title, body) {
       const card = $('workflowCard');
       if (!card) return;
@@ -949,6 +952,14 @@ ${script}`;
         selected = null;
         rebuild(); render(); updateTools(); updateAiContext();
         setTimeout(() => updateModelContext(), startupPhase ? 220 : 0);
+      } else {
+        scenes = [];
+        t = 0;
+        selected = null;
+        rebuild();
+        render();
+        updateTools();
+        updateAiContext();
       }
       requestHostResize(); finishStartupSoon();
       setServerState(`Đã nhận project v${projectVersion} từ MCP · ${bridgeMode}`, true)
@@ -1071,6 +1082,7 @@ ${script}`;
       return syncInFlight;
     }
     function buildModelContextPayload() {
+      if (!hasScenes()) return null;
       const idx = currentSceneIndex(), sc = scenes[idx], layer = selectedLayer();
       if (!sc) return null;
       return { selectedScene: { id: sc.id, index: idx + 1, title: sc.title, duration: sc.duration, layers: sc.layers.map(l => ({ id: l.id, text: l.text, size: l.size, x: l.x, y: l.y, weight: l.weight, align: l.align, color: l.color })) }, selectedLayer: layer ? { id: layer.id, text: layer.text } : null };
@@ -1104,7 +1116,15 @@ ${script}`;
       });
     }
     function updateModelContext() { scheduleModelContextUpdate(); updateAiContext() }
-    function updateAiContext() { const idx = currentSceneIndex(), sc = scenes[idx], layer = selectedLayer(); if (!sc) return; $("aiContext").innerHTML = `<b>Màn ${idx + 1}: ${sc.title}</b> · ${sc.duration}s<br>${sc.layers.map(l => `<span style="color:${l.color}">${escapeHtml(l.text).replace(/\n/g, " / ")}</span>`).join("<br>")}${layer ? `<br><br><b>Text đang chọn:</b> ${escapeHtml(layer.text)}` : ""}` }
+    function updateAiContext() {
+      if (!hasScenes()) {
+        $("aiContext").innerHTML = `<b>Chưa có scene render</b><br>Project mới sẽ không dùng animation/canvas của sample project. Xác nhận content plan để AI tạo khung edit mới hoàn toàn.`;
+        return;
+      }
+      const idx = currentSceneIndex(), sc = scenes[idx], layer = selectedLayer();
+      if (!sc) return;
+      $("aiContext").innerHTML = `<b>Màn ${idx + 1}: ${sc.title}</b> · ${sc.duration}s<br>${sc.layers.map(l => `<span style="color:${l.color}">${escapeHtml(l.text).replace(/\n/g, " / ")}</span>`).join("<br>")}${layer ? `<br><br><b>Text đang chọn:</b> ${escapeHtml(layer.text)}` : ""}`;
+    }
     function escapeHtml(v) { return String(v).replace(/[&<>\"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c])) }
     function defaultSceneAiPrompt(sc) {
       return `Viết lại màn "${sc.title}" ngắn hơn, dễ đọc trong 2 giây, giữ đúng ý chính, tiếng Việt tự nhiên, ưu tiên hook mạnh và bố cục chữ gọn cho video dọc.`;
@@ -1122,6 +1142,7 @@ ${script}`;
       $('aiPrompt').scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     function activateSceneForAi(index, { autoSend = false, useDefaultPrompt = false } = {}) {
+      if (!hasScenes()) return Promise.resolve();
       const bb = bounds(), sc = scenes[index];
       if (!sc || !bb[index]) return;
       closeInlineEditor(true);
@@ -1138,7 +1159,13 @@ ${script}`;
       return Promise.resolve();
     }
     async function sendAiPrompt(text, whole = false) {
-      text = String(text || "").trim(); if (!text && !whole) return; const idx = currentSceneIndex(), sc = scenes[idx]; const context = whole ? `Hãy review toàn bộ video project hiện tại. Dùng get_video_project trước, sau đó dùng update_scene hoặc update_text_layer để áp dụng các chỉnh sửa cần thiết. QUAN TRỌNG: chỉ trả lời trong chat là KHÔNG đủ — bạn phải thực sự gọi update_scene/update_text_layer cho từng thay đổi (kể cả dịch/rút gọn từng chữ), nếu không video sẽ không thay đổi. Mục tiêu: video dọc 60–75s, tiếng Việt tự nhiên, ít chữ, đọc nhanh, giữ đúng logic nội dung.` : `Bạn đang chỉnh Màn ${idx + 1} (${sc.id}) — ${sc.title}. Yêu cầu của tôi: ${text}\n\nHãy dùng MCP tools của Video Editor để áp dụng thay đổi trực tiếp vào đúng scene này. Ưu tiên update_text_layer cho thay đổi chữ/style nhỏ; dùng update_scene khi cần thay duration hoặc nhiều layer. QUAN TRỌNG: chỉ mô tả thay đổi trong câu trả lời chat là KHÔNG đủ — bạn bắt buộc phải gọi tool thật (update_text_layer/update_scene) cho MỌI layer cần đổi, kể cả khi chỉ dịch một chữ, nếu không thay đổi sẽ không được lưu và UI sẽ không cập nhật. Giữ nội dung chính xác, ngắn gọn, phù hợp TikTok/Reels.`;
+      text = String(text || "").trim();
+      if (!text && !whole) return;
+      if (!hasScenes() && !whole) { setServerState('Project này chưa có scene để sửa. Hãy tạo khung edit trước.', false); return }
+      const idx = currentSceneIndex(), sc = scenes[idx];
+      const context = whole
+        ? `Hãy review toàn bộ video project hiện tại. Dùng get_video_project trước, sau đó dùng update_scene hoặc update_text_layer để áp dụng các chỉnh sửa cần thiết. QUAN TRỌNG: chỉ trả lời trong chat là KHÔNG đủ — bạn phải thực sự gọi update_scene/update_text_layer cho từng thay đổi. Với project không phải sample, không tái dùng visual style cũ; hãy giữ concept riêng của project và tăng độ chi tiết editor-level cho từng scene.`
+        : `Bạn đang chỉnh Màn ${idx + 1} (${sc.id}) — ${sc.title}. Yêu cầu của tôi: ${text}\n\nHãy dùng MCP tools của Video Editor để áp dụng thay đổi trực tiếp vào đúng scene này. Ưu tiên update_text_layer cho thay đổi chữ/style nhỏ; dùng update_scene khi cần thay duration hoặc nhiều layer. QUAN TRỌNG: chỉ mô tả thay đổi trong câu trả lời chat là KHÔNG đủ — bạn bắt buộc phải gọi tool thật (update_text_layer/update_scene) cho MỌI layer cần đổi, kể cả khi chỉ dịch một chữ, nếu không thay đổi sẽ không được lưu và UI sẽ không cập nhật. Không kéo scene này về visual style của sample project; hãy giữ concept riêng, chi tiết hơn, giống một editor thật.`;
       const mode = await ensureHost();
       try {
         await flushPendingSync();
@@ -1158,10 +1185,123 @@ ${script}`;
     function totalDur() { return scenes.reduce((a, s) => a + Math.max(.2, +s.duration || 0), 0) } function fmt(x) { x = Math.max(0, x); let m = Math.floor(x / 60), s = Math.floor(x % 60); return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') } function bounds() { let acc = 0; return scenes.map((s, i) => { let a = acc, b = acc + (+s.duration || 0); acc = b; return { i, a, b } }) } function sceneAt(time) { let b = bounds(); return b.find(x => time >= x.a && time < x.b) || b[b.length - 1] } function clamp(x, a = 0, b = 1) { return Math.max(a, Math.min(b, x)) } function easeOut(x) { return 1 - Math.pow(1 - clamp(x), 3) } function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r) }
     function fitFont(text, maxW, size, weight) { let s = size; ctx.font = `${weight} ${s}px "Be Vietnam Pro",sans-serif`; while (ctx.measureText(text).width > maxW && s > 12) { s--; ctx.font = `${weight} ${s}px "Be Vietnam Pro",sans-serif` } return s }
     function drawLayer(sceneIndex, layerIndex, alpha = 1) { const l = scenes[sceneIndex]?.layers?.[layerIndex]; if (!l) return; const lines = String(l.text).split('\n'); let size = fitFont(lines.reduce((a, b) => a.length > b.length ? a : b, ''), l.maxWidth || 460, +l.size || 30, +l.weight || 700); ctx.save(); ctx.globalAlpha = alpha; ctx.font = `${l.weight} ${size}px "Be Vietnam Pro",sans-serif`; ctx.fillStyle = l.color; ctx.textBaseline = 'middle'; ctx.textAlign = l.align || 'center'; const lineH = size * 1.18, totalH = lineH * lines.length; let maxW = 0; for (const line of lines) maxW = Math.max(maxW, ctx.measureText(line).width); lines.forEach((line, i) => ctx.fillText(line, l.x, l.y + (i - (lines.length - 1) / 2) * lineH)); ctx.restore(); let left = l.align === 'left' ? l.x : (l.align === 'right' ? l.x - maxW : l.x - maxW / 2); hitBoxes.push({ sceneIndex, layerIndex, x: left - 10, y: l.y - totalH / 2 - 8, w: maxW + 20, h: totalH + 16 }); }
+    function drawLayerWithOffset(sceneIndex, layerIndex, alpha = 1, offsetY = 0, scale = 1) {
+      const l = scenes[sceneIndex]?.layers?.[layerIndex];
+      if (!l) return;
+      const lines = String(l.text).split('\n');
+      let size = fitFont(lines.reduce((a, b) => a.length > b.length ? a : b, ''), l.maxWidth || 460, +l.size || 30, +l.weight || 700);
+      size = Math.max(12, Math.round(size * scale));
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.font = `${l.weight} ${size}px "Be Vietnam Pro",sans-serif`;
+      ctx.fillStyle = l.color;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = l.align || 'center';
+      const lineH = size * 1.18, totalH = lineH * lines.length;
+      let maxW = 0;
+      for (const line of lines) maxW = Math.max(maxW, ctx.measureText(line).width);
+      lines.forEach((line, i) => ctx.fillText(line, l.x, l.y + offsetY + (i - (lines.length - 1) / 2) * lineH));
+      ctx.restore();
+      let left = l.align === 'left' ? l.x : (l.align === 'right' ? l.x - maxW : l.x - maxW / 2);
+      hitBoxes.push({ sceneIndex, layerIndex, x: left - 10, y: l.y + offsetY - totalH / 2 - 8, w: maxW + 20, h: totalH + 16 });
+    }
     function bg(accent = '#64e7ff') { ctx.fillStyle = '#070a11'; ctx.fillRect(0, 0, W, H); let g = ctx.createRadialGradient(W * .15, H * .15, 20, W * .15, H * .15, 450); g.addColorStop(0, accent + '24'); g.addColorStop(1, '#00000000'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.strokeStyle = '#ffffff09'; for (let y = 110; y < H; y += 70) { ctx.beginPath(); ctx.moveTo(28, y); ctx.lineTo(W - 28, y); ctx.stroke() } for (let x = 48; x < W; x += 74) { ctx.beginPath(); ctx.moveTo(x, 100); ctx.lineTo(x, H - 50); ctx.stroke() } ctx.fillStyle = '#8792a8'; ctx.font = '600 17px "Be Vietnam Pro"'; ctx.textAlign = 'left'; ctx.fillText('SOCIAL ALGORITHM', 28, 48); ctx.textAlign = 'right'; ctx.fillText('9:16', W - 28, 48) }
     function pill(x, y, w, h, color) { ctx.fillStyle = color + '20'; ctx.strokeStyle = color + '70'; ctx.lineWidth = 2; rr(x, y, w, h, h / 2); ctx.fill(); ctx.stroke() }
+    function paletteForScene(sc = {}) {
+      const accent = sc?.style?.accent || ({ hook:'#64e7ff', first:'#ffd54a', signals:'#67f5a5', ladder:'#64e7ff', stop:'#ff6b7a', goal:'#ffd54a', niche:'#67f5a5', formula:'#64e7ff', quote:'#9b8cff', data:'#5eead4' }[sc.type] || '#64e7ff');
+      const background = sc?.style?.background || '#0a0f18';
+      return { accent, background };
+    }
+    function drawEmptyCanvas() {
+      hitBoxes = [];
+      ctx.clearRect(0, 0, W, H);
+      const g = ctx.createLinearGradient(0, 0, W, H);
+      g.addColorStop(0, '#08101b');
+      g.addColorStop(1, '#05070b');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = '#243147';
+      ctx.lineWidth = 2;
+      rr(40, 110, 460, 740, 30);
+      ctx.stroke();
+      ctx.fillStyle = '#8ea0bb';
+      ctx.font = '700 22px "Be Vietnam Pro"';
+      ctx.textAlign = 'center';
+      ctx.fillText('Project này chưa có khung edit', 270, 300);
+      ctx.fillStyle = '#d6e0f0';
+      ctx.font = '800 42px "Be Vietnam Pro"';
+      ctx.fillText('Xác nhận content plan', 270, 392);
+      ctx.fillText('để AI dựng canvas mới', 270, 446);
+      ctx.fillStyle = '#6f809c';
+      ctx.font = '500 18px "Be Vietnam Pro"';
+      ctx.fillText('Không dùng animation mặc định của sample project.', 270, 560);
+      ctx.fillText('Scene mới sẽ render theo concept riêng của project.', 270, 594);
+    }
+    function drawGenericScene(sceneIndex, p) {
+      const sc = scenes[sceneIndex];
+      if (!sc) return;
+      const { accent, background } = paletteForScene(sc);
+      const layout = sc?.style?.layout || 'focus';
+      const kicker = sc?.style?.kicker || sc.title || sc.type || 'SCENE';
+      hitBoxes = [];
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = background;
+      ctx.fillRect(0, 0, W, H);
+      const glow = ctx.createRadialGradient(W * .2, H * .18, 20, W * .2, H * .18, 520);
+      glow.addColorStop(0, accent + '35');
+      glow.addColorStop(1, '#00000000');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = '#ffffff0c';
+      for (let y = 100; y < H; y += 86) { ctx.beginPath(); ctx.moveTo(26, y); ctx.lineTo(W - 26, y); ctx.stroke() }
+      pill(36, 42, Math.min(300, 110 + kicker.length * 8), 42, accent);
+      ctx.fillStyle = accent;
+      ctx.font = '800 17px "Be Vietnam Pro"';
+      ctx.textAlign = 'left';
+      ctx.fillText(kicker.toUpperCase(), 58, 68);
+      ctx.fillStyle = '#91a3be';
+      ctx.font = '600 14px "Be Vietnam Pro"';
+      ctx.textAlign = 'right';
+      ctx.fillText((sc?.style?.motion || 'custom motion').toUpperCase(), W - 36, 68);
+      ctx.fillStyle = '#0d1522';
+      if (layout === 'split' || layout === 'comparison') {
+        rr(36, 180, 212, 570, 26); ctx.fill();
+        rr(292, 180, 212, 570, 26); ctx.fill();
+      } else if (layout === 'timeline' || layout === 'flow') {
+        rr(88, 176, 364, 612, 28); ctx.fill();
+        ctx.strokeStyle = accent + '88';
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(270, 244); ctx.lineTo(270, 706); ctx.stroke();
+      } else if (layout === 'card-grid') {
+        [[36,188],[282,188],[36,476],[282,476]].forEach(([x,y]) => { rr(x, y, 222, 244, 24); ctx.fill(); });
+      } else if (layout === 'quote') {
+        rr(44, 210, 452, 500, 28); ctx.fill();
+        ctx.fillStyle = accent;
+        ctx.font = '900 110px "Be Vietnam Pro"';
+        ctx.textAlign = 'left';
+        ctx.fillText('“', 70, 295);
+        ctx.fillStyle = '#0d1522';
+      } else if (layout === 'data') {
+        rr(44, 190, 452, 540, 28); ctx.fill();
+        [0,1,2].forEach(i => { ctx.fillStyle = '#192235'; rr(84, 296 + i * 118, 372, 18, 9); ctx.fill(); });
+        ctx.fillStyle = '#0d1522';
+      } else {
+        rr(44, 176, 452, 610, 30); ctx.fill();
+      }
+      if (sc?.style?.notes) {
+        ctx.fillStyle = '#aebbd1';
+        ctx.font = '500 13px "Be Vietnam Pro"';
+        ctx.textAlign = 'center';
+        ctx.fillText(sc.style.notes, 270, 900);
+      }
+      (sc.layers || []).forEach((_, i) => {
+        const layerIn = easeOut(clamp((p - i * .05) / .18));
+        drawLayerWithOffset(sceneIndex, i, .28 + .72 * layerIn, 24 * (1 - layerIn), .96 + .04 * layerIn);
+      });
+    }
     function drawScene(sceneIndex, p) {
       hitBoxes = []; const sc = scenes[sceneIndex], intro = easeOut(clamp(p / .18)); ctx.clearRect(0, 0, W, H);
+      if (!isSampleProject()) { drawGenericScene(sceneIndex, p); return }
       if (sc.type === 'hook') { bg('#64e7ff'); pill(145, 132, 250, 46, '#ffd54a'); ctx.fillStyle = '#ffd54a'; ctx.font = '700 19px "Be Vietnam Pro"'; ctx.textAlign = 'center'; ctx.fillText('OPEN LOOP', 270, 155); drawLayer(sceneIndex, 0, intro); drawLayer(sceneIndex, 1, intro); drawLayer(sceneIndex, 2, intro) }
       if (sc.type === 'first') { bg('#ffd54a'); drawLayer(sceneIndex, 0, intro); let pop = easeOut(clamp((p - .18) / .22)); ctx.save(); ctx.translate(270, 430); ctx.scale(.72 + .28 * pop, .72 + .28 * pop); ctx.translate(-270, -430); drawLayer(sceneIndex, 1, 1); ctx.restore(); pill(125, 525, 290, 46, '#ffd54a'); drawLayer(sceneIndex, 2, 1); drawLayer(sceneIndex, 3, 1); drawLayer(sceneIndex, 4, 1); drawLayer(sceneIndex, 5, 1) }
       if (sc.type === 'signals') { bg('#67f5a5'); drawLayer(sceneIndex, 0, 1); drawLayer(sceneIndex, 1, 1); const icons = ['⏱', '♥', '💬', '↗']; for (let i = 0; i < 4; i++) { let q = easeOut(clamp((p - i * .08) / .2)), y = 330 + i * 105; ctx.globalAlpha = q; ctx.fillStyle = '#111827'; rr(55, y, 430, 78, 18); ctx.fill(); ctx.strokeStyle = '#2f3c51'; ctx.stroke(); ctx.fillStyle = i === 0 ? '#67f5a5' : '#f7f9ff'; ctx.font = '700 29px "Be Vietnam Pro"'; ctx.textAlign = 'left'; ctx.fillText(icons[i], 80, y + 50); ctx.fillStyle = '#273347'; rr(330, y + 30, 120, 16, 8); ctx.fill(); ctx.fillStyle = '#67f5a5'; rr(330, y + 30, 120 * q, 16, 8); ctx.fill(); ctx.globalAlpha = 1; drawLayer(sceneIndex, 2 + i, q) } }
@@ -1171,20 +1311,60 @@ ${script}`;
       if (sc.type === 'niche') { bg('#64e7ff'); drawLayer(sceneIndex, 0, 1); drawLayer(sceneIndex, 1, 1); const emoji = ['😂', '⚽', '📚']; for (let i = 0; i < 3; i++) { let x = 62 + i * 150; ctx.fillStyle = '#121827'; rr(x, 340, 116, 120, 20); ctx.fill(); ctx.fillStyle = '#ff6b7a'; ctx.font = '800 25px "Be Vietnam Pro"'; ctx.textAlign = 'center'; ctx.fillText('×', x + 58, 370); ctx.fillStyle = '#fff'; ctx.font = '34px sans-serif'; ctx.fillText(emoji[i], x + 58, 414); drawLayer(sceneIndex, 2 + i, 1) } ctx.strokeStyle = '#ffffff45'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(270, 485); ctx.lineTo(270, 560); ctx.stroke(); ctx.fillStyle = '#67f5a5'; rr(105, 590, 330, 120, 24); ctx.fill(); drawLayer(sceneIndex, 5, 1); drawLayer(sceneIndex, 6, 1) }
       if (sc.type === 'formula') { bg('#67f5a5'); drawLayer(sceneIndex, 0, 1); const colors = ['#64e7ff', '#ffd54a', '#67f5a5', '#f7f9ff']; for (let i = 0; i < 4; i++) { let q = easeOut(clamp((p - i * .08) / .18)); ctx.globalAlpha = q; pill(90, 250 + i * 95, 360, 46, colors[i]); ctx.globalAlpha = 1; drawLayer(sceneIndex, 1 + i, q) } drawLayer(sceneIndex, 5, 1); drawLayer(sceneIndex, 6, 1); drawLayer(sceneIndex, 7, 1); drawLayer(sceneIndex, 8, 1) }
     }
-    function currentSceneIndex() { return sceneAt(t).i } function render() { const b = sceneAt(t), p = (t - b.a) / (b.b - b.a || 1); drawScene(b.i, p); $('now').textContent = fmt(t); $('total').textContent = fmt(totalDur()); $('seek').max = totalDur(); $('seek').value = t; document.querySelectorAll('.scene').forEach((e, i) => e.classList.toggle('active', i === b.i)); updateSelectionBox() }
-    function rebuild() { const list = $('sceneList'); list.innerHTML = ''; let bs = bounds(); scenes.forEach((s, i) => { let d = document.createElement('div'); d.className = 'scene'; d.dataset.scene = i; d.innerHTML = `<div class="scene-head"><div class="scene-title">${i + 1}. ${s.title}</div><div class="time">${fmt(bs[i].a)} → ${fmt(bs[i].b)}</div></div><div class="row"><label>Duration (giây)</label><input type="number" min="0.5" step="0.5" value="${s.duration}" data-dur="${i}"></div><button class="scene-ai" data-ai="${i}">✨ AI sửa màn này</button>`; d.onclick = e => { if (e.target.matches('input,button')) return; t = bs[i].a; selected = null; closeInlineEditor(); render(); updateTools(); updateModelContext(); setTimeout(() => pullLatestProject('scene-click'), 550) }; list.appendChild(d) }); list.querySelectorAll('[data-dur]').forEach(el => el.oninput = e => { const i = +e.target.dataset.dur; scenes[i].duration = Math.max(.5, +e.target.value || .5); t = Math.min(t, totalDur() - .001); rebuild(); render(); scheduleSyncSceneDuration(i); updateModelContext() }); list.querySelectorAll('[data-ai]').forEach(btn => btn.onclick = e => { e.stopPropagation(); const i = +btn.dataset.ai; activateSceneForAi(i, { autoSend: true, useDefaultPrompt: true }) }); render() }
+    function currentSceneIndex() { return hasScenes() ? sceneAt(t).i : 0 }
+    function render() {
+      if (!hasScenes()) {
+        drawEmptyCanvas();
+        $('now').textContent = '00:00';
+        $('total').textContent = '00:00';
+        $('seek').max = 0;
+        $('seek').value = 0;
+        document.querySelectorAll('.scene').forEach(e => e.classList.remove('active'));
+        updateSelectionBox();
+        return;
+      }
+      const b = sceneAt(t), p = (t - b.a) / (b.b - b.a || 1);
+      drawScene(b.i, p);
+      $('now').textContent = fmt(t);
+      $('total').textContent = fmt(totalDur());
+      $('seek').max = totalDur();
+      $('seek').value = t;
+      document.querySelectorAll('.scene').forEach((e, i) => e.classList.toggle('active', i === b.i));
+      updateSelectionBox();
+    }
+    function rebuild() {
+      const list = $('sceneList');
+      list.innerHTML = '';
+      if (!hasScenes()) {
+        list.innerHTML = '<div class="project-meta" style="padding:18px 0">Project này chưa có scene nào. Hãy để AI tạo khung edit mới từ content plan.</div>';
+        render();
+        return;
+      }
+      let bs = bounds();
+      scenes.forEach((s, i) => {
+        let d = document.createElement('div');
+        d.className = 'scene';
+        d.dataset.scene = i;
+        d.innerHTML = `<div class="scene-head"><div class="scene-title">${i + 1}. ${s.title}</div><div class="time">${fmt(bs[i].a)} → ${fmt(bs[i].b)}</div></div><div class="row"><label>Duration (giây)</label><input type="number" min="0.5" step="0.5" value="${s.duration}" data-dur="${i}"></div><button class="scene-ai" data-ai="${i}">✨ AI sửa màn này</button>`;
+        d.onclick = e => { if (e.target.matches('input,button')) return; t = bs[i].a; selected = null; closeInlineEditor(); render(); updateTools(); updateModelContext(); setTimeout(() => pullLatestProject('scene-click'), 550) };
+        list.appendChild(d);
+      });
+      list.querySelectorAll('[data-dur]').forEach(el => el.oninput = e => { const i = +e.target.dataset.dur; scenes[i].duration = Math.max(.5, +e.target.value || .5); t = Math.min(t, totalDur() - .001); rebuild(); render(); scheduleSyncSceneDuration(i); updateModelContext() });
+      list.querySelectorAll('[data-ai]').forEach(btn => btn.onclick = e => { e.stopPropagation(); const i = +btn.dataset.ai; activateSceneForAi(i, { autoSend: true, useDefaultPrompt: true }) });
+      render();
+    }
     function canvasPoint(e) { const r = c.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height } } function boxAt(pt) { for (let i = hitBoxes.length - 1; i >= 0; i--) { const b = hitBoxes[i]; if (pt.x >= b.x && pt.x <= b.x + b.w && pt.y >= b.y && pt.y <= b.y + b.h) return b } return null }
     function selectBox(b) { if (!b) { selected = null; updateTools(); updateSelectionBox(); updateModelContext(); return } selected = { sceneIndex: b.sceneIndex, layerIndex: b.layerIndex }; updateTools(); updateSelectionBox(); updateModelContext() }
     function selectedLayer() { return selected ? scenes[selected.sceneIndex]?.layers[selected.layerIndex] : null }
     function updateTools() { const l = selectedLayer(), tools = $('textTools'); if (!l) { tools.classList.add('disabled'); $('selectedName').textContent = 'Chưa chọn'; return } tools.classList.remove('disabled'); $('selectedName').textContent = l.text.replace(/\n/g, ' / '); $('fontSize').value = l.size; $('fontWeight').value = String(l.weight); $('textAlign').value = l.align; $('textX').value = Math.round(l.x); $('textY').value = Math.round(l.y) }
     function cssBoxForSelected() { if (!selected) return null; const b = hitBoxes.find(x => x.sceneIndex === selected.sceneIndex && x.layerIndex === selected.layerIndex); if (!b) return null; const r = c.getBoundingClientRect(), sx = r.width / W, sy = r.height / H; return { left: b.x * sx, top: b.y * sy, width: b.w * sx, height: b.h * sy, sx, sy } }
-    function updateSelectionBox() { const el = $('selectionBox'); if (!selected || selected.sceneIndex !== currentSceneIndex() || editing) { el.classList.remove('active'); return } const b = cssBoxForSelected(); if (!b) { el.classList.remove('active'); return } el.style.left = b.left + 'px'; el.style.top = b.top + 'px'; el.style.width = b.width + 'px'; el.style.height = b.height + 'px'; el.classList.add('active') }
+    function updateSelectionBox() { const el = $('selectionBox'); if (!hasScenes() || !selected || selected.sceneIndex !== currentSceneIndex() || editing) { el.classList.remove('active'); return } const b = cssBoxForSelected(); if (!b) { el.classList.remove('active'); return } el.style.left = b.left + 'px'; el.style.top = b.top + 'px'; el.style.width = b.width + 'px'; el.style.height = b.height + 'px'; el.classList.add('active') }
     function openInlineEditor() { const l = selectedLayer(); if (!l) return; const b = cssBoxForSelected(); if (!b) return; editing = true; $('canvasWrap').classList.add('editing'); const ed = $('inlineEditor'); ed.textContent = l.text; ed.style.left = b.left + 'px'; ed.style.top = b.top + 'px'; ed.style.width = Math.max(100, b.width) + 'px'; ed.style.minHeight = Math.max(34, b.height) + 'px'; ed.style.fontSize = Math.max(12, l.size * b.sy) + 'px'; ed.style.fontWeight = l.weight; ed.style.textAlign = l.align; ed.style.color = l.color; ed.classList.add('active'); updateSelectionBox(); setTimeout(() => { ed.focus(); const range = document.createRange(); range.selectNodeContents(ed); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range) }, 0) }
     function closeInlineEditor(commit = true) { const ed = $('inlineEditor'); if (!editing) return; const si = selected?.sceneIndex, li = selected?.layerIndex; if (commit && selectedLayer()) { selectedLayer().text = ed.innerText.replace(/\r/g, ''); } editing = false; ed.classList.remove('active'); $('canvasWrap').classList.remove('editing'); render(); updateTools(); updateModelContext(); if (commit && si != null && li != null) scheduleSyncLayer(si, li) }
     c.addEventListener('click', e => { if (editing) return; const b = boxAt(canvasPoint(e)); selectBox(b) }); c.addEventListener('dblclick', e => { const b = boxAt(canvasPoint(e)); selectBox(b); if (b) openInlineEditor() }); $('inlineEditor').addEventListener('input', e => { if (selectedLayer()) { selectedLayer().text = e.currentTarget.innerText.replace(/\r/g, ''); render() } }); $('inlineEditor').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); closeInlineEditor(true) } if (e.key === 'Escape') { e.preventDefault(); closeInlineEditor(false) } }); document.addEventListener('mousedown', e => { if (editing && !$('inlineEditor').contains(e.target) && e.target !== c) closeInlineEditor(true) });
     ['fontSize', 'fontWeight', 'textAlign', 'textX', 'textY'].forEach(id => $(id).addEventListener('input', () => { const l = selectedLayer(); if (!l) return; l.size = +$('fontSize').value || l.size; l.weight = +$('fontWeight').value || l.weight; l.align = $('textAlign').value; l.x = +$('textX').value; l.y = +$('textY').value; render(); updateModelContext(); scheduleSyncLayer(selected.sceneIndex, selected.layerIndex) }));
     function tick(ts) { if (playing) { if (!last) last = ts; let dt = (ts - last) / 1000; last = ts; t += dt; if (t >= totalDur()) { playing = false; t = totalDur() - .001; $('play').textContent = '▶ Preview'; if (audioEl) audioEl.pause() } render() } requestAnimationFrame(tick) } requestAnimationFrame(tick);
-    $('play').onclick = () => { closeInlineEditor(true); playing = !playing; $('play').textContent = playing ? '❚❚ Pause' : '▶ Preview'; last = 0; if (audioEl) { audioEl.currentTime = t; if (playing) audioEl.play(); else audioEl.pause() } }; $('seek').oninput = e => { closeInlineEditor(true); t = +e.target.value; selected = null; last = 0; if (audioEl) audioEl.currentTime = t; render(); updateTools(); updateModelContext() }; $('prev').onclick = () => { closeInlineEditor(true); let b = sceneAt(t), bb = bounds(); t = bb[Math.max(0, b.i - 1)].a; selected = null; render(); updateTools(); updateModelContext() }; $('next').onclick = () => { closeInlineEditor(true); let b = sceneAt(t), bb = bounds(); t = bb[Math.min(bb.length - 1, b.i + 1)].a; selected = null; render(); updateTools(); updateModelContext() }; $('reset').onclick = async () => { closeInlineEditor(false); const mode = await ensureHost(); if (mode) { await callHostTool('reset_video_project', {}); } else { scenes = JSON.parse(JSON.stringify(baseScenes)); t = 0; selected = null; rebuild(); updateTools(); updateModelContext() } };
+    $('play').onclick = () => { if (!hasScenes()) return; closeInlineEditor(true); playing = !playing; $('play').textContent = playing ? '❚❚ Pause' : '▶ Preview'; last = 0; if (audioEl) { audioEl.currentTime = t; if (playing) audioEl.play(); else audioEl.pause() } }; $('seek').oninput = e => { if (!hasScenes()) return; closeInlineEditor(true); t = +e.target.value; selected = null; last = 0; if (audioEl) audioEl.currentTime = t; render(); updateTools(); updateModelContext() }; $('prev').onclick = () => { if (!hasScenes()) return; closeInlineEditor(true); let b = sceneAt(t), bb = bounds(); t = bb[Math.max(0, b.i - 1)].a; selected = null; render(); updateTools(); updateModelContext() }; $('next').onclick = () => { if (!hasScenes()) return; closeInlineEditor(true); let b = sceneAt(t), bb = bounds(); t = bb[Math.min(bb.length - 1, b.i + 1)].a; selected = null; render(); updateTools(); updateModelContext() }; $('reset').onclick = async () => { closeInlineEditor(false); const mode = await ensureHost(); if (mode) { await callHostTool('reset_video_project', {}); } else { scenes = JSON.parse(JSON.stringify(baseScenes)); t = 0; selected = null; rebuild(); updateTools(); updateModelContext() } };
     $('audioFile').onchange = e => { if (audioUrl) URL.revokeObjectURL(audioUrl); let f = e.target.files[0]; if (!f) { audioEl = null; return } audioUrl = URL.createObjectURL(f); audioEl = new Audio(audioUrl); $('status').textContent = 'Đã nạp voice-over: ' + f.name };
     async function recordWebM() { return new Promise(async (resolve, reject) => { closeInlineEditor(true); selected = null; updateSelectionBox(); const fps = 30, stream = c.captureStream(fps); let ac = null, src = null, dest = null; if (audioEl) { ac = new AudioContext(); src = ac.createMediaElementSource(audioEl); dest = ac.createMediaStreamDestination(); src.connect(dest); src.connect(ac.destination); dest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr)); await ac.resume() } let mime = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find(x => MediaRecorder.isTypeSupported(x)) || '', rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 8000000 } : undefined), chunks = []; rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data) }; rec.onerror = reject; rec.onstop = () => { if (ac) ac.close(); resolve(new Blob(chunks, { type: 'video/webm' })) }; const oldT = t, oldPlaying = playing; playing = false; t = 0; last = 0; if (audioEl) { audioEl.currentTime = 0; await audioEl.play().catch(() => { }) } $('status').textContent = 'Đang render video realtime…'; rec.start(1000); const started = performance.now(); function step(now) { t = (now - started) / 1000; render(); if (t < totalDur()) requestAnimationFrame(step); else { t = totalDur() - .001; render(); if (audioEl) audioEl.pause(); rec.stop(); t = oldT; playing = oldPlaying; render() } } requestAnimationFrame(step) }) }
     function ensureFfmpegLib() { if (window.FFmpeg) return Promise.resolve(); return new Promise((resolve, reject) => { const s = document.createElement('script'); s.src = 'https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js'; s.onload = resolve; s.onerror = () => reject(new Error('Không tải được ffmpeg.wasm')); document.head.appendChild(s) }) } function downloadBlob(blob, name) { let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000) } $('webm').onclick = async () => { try { $('webm').disabled = true; let b = await recordWebM(); downloadBlob(b, 'social_algorithm_short.webm'); $('status').textContent = 'Đã xuất WebM.' } catch (e) { $('status').textContent = 'Lỗi export: ' + e.message } finally { $('webm').disabled = false } }; $('mp4').onclick = async () => { try { $('mp4').disabled = true; let webm = await recordWebM(); $('status').textContent = 'Đang chuyển WebM → MP4…'; await ensureFfmpegLib(); if (!window.FFmpeg) throw new Error('Không tải được ffmpeg.wasm'); const { createFFmpeg, fetchFile } = FFmpeg, ffmpeg = createFFmpeg({ log: false, corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js' }); await ffmpeg.load(); ffmpeg.FS('writeFile', 'in.webm', await fetchFile(webm)); await ffmpeg.run('-i', 'in.webm', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', 'faststart', '-preset', 'veryfast', '-c:a', 'aac', '-b:a', '160k', 'out.mp4'); const out = ffmpeg.FS('readFile', 'out.mp4'); downloadBlob(new Blob([out.buffer], { type: 'video/mp4' }), 'social_algorithm_short.mp4'); $('status').textContent = 'Đã xuất MP4.' } catch (e) { $('status').textContent = 'MP4 lỗi: ' + e.message + ' — dùng WebM nếu cần.' } finally { $('mp4').disabled = false } };
@@ -1214,7 +1394,12 @@ Hãy gọi generate_project_edit với:
 Yêu cầu scene:
 - Mỗi scene phải có id, title, duration, type, layers
 - Mỗi layer phải có id, text, x, y, size, color, weight, align, maxWidth
-- Chọn type phù hợp trong: hook, first, signals, ladder, stop, goal, niche, formula
+- Mỗi scene phải có thêm object style gồm: layout, background, accent, kicker, motion, mood, notes
+- layout nên ưu tiên một trong: focus, split, stacked, flow, timeline, comparison, card-grid, quote, data
+- KHÔNG tái sử dụng visual style/animation/canvas của sample project social-algorithm-short
+- Scene phải đủ chi tiết như một editor thật: headline, support text, labels, numbers, caption, cue text nếu cần
+- Ưu tiên 4-10 layer text mỗi scene khi hợp lý, không làm sơ sài
+- Có thể dùng type mô tả theo nội dung scene; không bắt buộc bám bộ type sample
 - Chữ ngắn, dễ đọc trên mobile
 - x trong 0-540, y trong 0-960
 - Preserve project logic across scenes

@@ -96,12 +96,22 @@ const layerSchema = z.object({
   align: z.enum(["left", "center", "right"]),
   maxWidth: z.number().optional(),
 });
+const sceneStyleSchema = z.object({
+  layout: z.string().optional(),
+  background: z.string().optional(),
+  accent: z.string().optional(),
+  kicker: z.string().optional(),
+  motion: z.string().optional(),
+  mood: z.string().optional(),
+  notes: z.string().optional(),
+}).optional();
 const sceneSchema = z.object({
   id: z.string(),
   title: z.string(),
   duration: z.number(),
   type: z.string(),
   layers: z.array(layerSchema),
+  style: sceneStyleSchema,
 });
 const projectSchema = z.object({
   id: z.string(),
