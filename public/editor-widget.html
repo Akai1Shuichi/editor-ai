@@ -1665,7 +1665,7 @@
         if (project) {
           activeProject = project;
           renderPlan(project);
-          const prompt = `Use only the Video Editor app tools.
+          const prompt = `Bạn có thể dùng khả năng của ChatGPT để mở/đọc/phân tích link nguồn nếu có. Chỉ dùng Video Editor app tools ở bước ghi kết quả vào project JSON.
 
 Bạn là Video Content Strategist + Short-form Script Writer, chuyên video dọc 9:16 cho TikTok/Reels/YouTube Shorts.
 
@@ -1680,15 +1680,18 @@ QUY TẮC CỨNG (không được vi phạm):
 - KHÔNG tái sử dụng visual/concept của project mẫu ${SAMPLE_PROJECT_ID || "social-algorithm-short"}.
 
 QUY TRÌNH:
-1. Đọc toàn bộ link nguồn và/hoặc kịch bản bên dưới trước khi tóm tắt (không phân tích rời rạc từng đoạn).
-2. Xác định insight quan trọng nhất, luận điểm hỗ trợ, và phần nên bỏ.
-3. Chia thành 5-12 màn video 9:16 theo flow: HOOK → GIẢI THÍCH → VISUAL → INSIGHT → KẾT LUẬN.
-4. Gọi tool set_project_content_plan cho đúng project_id = "${project.id}" với mỗi item có đủ:
+1. Nếu có Link nguồn YouTube/video ở trên, bạn PHẢI tự dùng khả năng của ChatGPT để mở/đọc/phân tích chính link đó trước. Video Editor app KHÔNG phải công cụ phân tích video nguồn.
+1b. Không được từ chối chỉ vì "lượt này chỉ cho phép dùng công cụ Video Editor" nếu bạn vẫn có thể tự phân tích link bằng khả năng riêng của ChatGPT; Video Editor chỉ là nơi lưu kết quả cuối cùng.
+2. Chỉ sau khi tự phân tích xong nguồn, mới dùng Video Editor app để ghi kết quả vào project JSON.
+3. Dùng phần "Kịch bản nguồn" bên dưới như tài liệu bổ sung nếu có; không được bỏ qua link nguồn chỉ vì có script.
+4. Xác định insight quan trọng nhất, luận điểm hỗ trợ, và phần nên bỏ.
+5. Chia thành 5-12 màn video 9:16 theo flow: HOOK → GIẢI THÍCH → VISUAL → INSIGHT → KẾT LUẬN.
+6. Gọi tool set_project_content_plan cho đúng project_id = "${project.id}" với mỗi item có đủ:
    - id, title, purpose (vai trò của màn trong flow), content (voice-over ngắn, 1 ý/câu, dễ đọc), duration (giây).
-5. Content phải ngắn, tiếng Việt tự nhiên, dễ đọc thành voice-over và dễ dựng subtitle.
-6. BẮT BUỘC tuân theo style edit bên dưới khi phân tích.
-7. Ở bước này tuyệt đối CHƯA gọi generate_project_edit và CHƯA tạo scenes/layers.
-8. Trước khi gọi tool, tự kiểm tra: đã bịa số liệu chưa? hook có clickbait không? nếu có, sửa lại trước.
+7. Content phải ngắn, tiếng Việt tự nhiên, dễ đọc thành voice-over và dễ dựng subtitle.
+8. BẮT BUỘC tuân theo style edit bên dưới khi phân tích.
+9. Ở bước này tuyệt đối CHƯA gọi generate_project_edit và CHƯA tạo scenes/layers.
+10. Trước khi gọi tool, tự kiểm tra: đã bịa số liệu chưa? hook có clickbait không? nếu có, sửa lại trước.
 
 STYLE EDIT:
 ${stylePrompt(project)}

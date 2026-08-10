@@ -22,6 +22,38 @@ const ACTIVE_FILE = join(PROJECTS_DIR, ".active");
 mkdirSync(PROJECTS_DIR, { recursive: true });
 
 const clone = (v) => JSON.parse(JSON.stringify(v));
+function synthesizeSourceScript(script, sourceUrl) {
+  const cleanScript = String(script || "").trim();
+  const cleanUrl = String(sourceUrl || "").trim();
+  if (cleanScript) return cleanScript;
+  if (!cleanUrl) return "";
+  return [
+    "SOURCE_VIDEO_ONLY",
+    `URL: ${cleanUrl}`,
+    "Khong co transcript san trong project.",
+    "Hay tu dung kha nang cua ChatGPT de mo/doc/phan tich chinh URL nguon nay, sau do moi ghi content plan vao project JSON.",
+    "Khong duoc tu choi chi vi truong script trong.",
+  ].join("\n");
+}
+function normalizeProject(project) {
+  const next = clone(project);
+  next.scenes = Array.isArray(next.scenes) ? next.scenes : [];
+  next.workflow = {
+    status: "ready",
+    script: "",
+    sourceUrl: "",
+    contentPlan: [],
+    styleEdit: clone(styleEditPreset),
+    ...(next.workflow || {}),
+  };
+  next.workflow.contentPlan = Array.isArray(next.workflow.contentPlan) ? next.workflow.contentPlan : [];
+  next.workflow.styleEdit = {
+    ...clone(styleEditPreset),
+    ...(next.workflow.styleEdit || {}),
+  };
+  next.workflow.script = synthesizeSourceScript(next.workflow.script, next.workflow.sourceUrl);
+  return next;
+}
 
 const safeId = (value) => String(value || "project").toLowerCase().normalize("NFD")
   .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || "project";
@@ -29,16 +61,15 @@ const projectPath = (id) => join(PROJECTS_DIR, `${safeId(id)}.json`);
 function readProject(id) {
   const path = projectPath(id);
   if (!existsSync(path)) return null;
-  return JSON.parse(readFileSync(path, "utf8"));
+  return normalizeProject(JSON.parse(readFileSync(path, "utf8")));
 }
 function initialProject() {
-  const project = clone(defaultProject);
+  const project = normalizeProject(defaultProject);
   project.updatedAt = new Date().toISOString();
-  project.workflow = project.workflow || { status: "ready", script: "", sourceUrl: "", contentPlan: [], styleEdit: clone(styleEditPreset) };
   return project;
 }
 function emptyProject() {
-  return {
+  return normalizeProject({
     id: "project",
     title: "Untitled Project",
     version: 0,
@@ -51,12 +82,12 @@ function emptyProject() {
       contentPlan: [],
       styleEdit: clone(styleEditPreset),
     },
-  };
+  });
 }
 if (!existsSync(projectPath(defaultProject.id))) writeFileSync(projectPath(defaultProject.id), JSON.stringify(initialProject(), null, 2));
 let activeProjectId = existsSync(ACTIVE_FILE) ? readFileSync(ACTIVE_FILE, "utf8").trim() : defaultProject.id;
 if (!existsSync(projectPath(activeProjectId))) activeProjectId = defaultProject.id;
-let projectStore = JSON.parse(readFileSync(projectPath(activeProjectId), "utf8"));
+let projectStore = readProject(activeProjectId);
 function listProjects() {
   return readdirSync(PROJECTS_DIR).filter((name) => name.endsWith(".json")).map((name) => {
     const p = JSON.parse(readFileSync(join(PROJECTS_DIR, name), "utf8"));
@@ -64,22 +95,23 @@ function listProjects() {
   }).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
 }
 function getProject(_extra) {
-  return projectStore;
+  return normalizeProject(projectStore);
 }
 function saveProject(_extra, project) {
   const stored = readProject(project.id);
-  project.version = (stored?.version ?? project.version ?? 0) + 1;
-  project.updatedAt = new Date().toISOString();
-  projectStore = project;
-  activeProjectId = project.id;
-  writeFileSync(projectPath(project.id), JSON.stringify(project, null, 2));
-  writeFileSync(ACTIVE_FILE, project.id);
+  const normalized = normalizeProject(project);
+  normalized.version = (stored?.version ?? normalized.version ?? 0) + 1;
+  normalized.updatedAt = new Date().toISOString();
+  projectStore = normalized;
+  activeProjectId = normalized.id;
+  writeFileSync(projectPath(normalized.id), JSON.stringify(normalized, null, 2));
+  writeFileSync(ACTIVE_FILE, normalized.id);
   return projectStore;
 }
 function selectProject(id) {
   const path = projectPath(id);
   if (!existsSync(path)) return null;
-  projectStore = JSON.parse(readFileSync(path, "utf8"));
+  projectStore = readProject(id);
   activeProjectId = projectStore.id;
   writeFileSync(ACTIVE_FILE, activeProjectId);
   return projectStore;
@@ -171,7 +203,7 @@ function createVideoEditorServer() {
     { name: "chatgpt-video-editor", version: "0.3.1" },
     {
       instructions:
-        "This app manages durable JSON short-video projects. The default project is only a sample/template; new projects must not reuse its scenes unless explicitly requested. For a new project, call create_video_project first, then analyze its workflow.script and workflow.sourceUrl while following workflow.styleEdit.prompt, and call set_project_content_plan for that exact project_id. Stop there so the user can edit and confirm the proposed screen copy. Only after explicit confirmation call generate_project_edit with complete scenes and layers, still following workflow.styleEdit.prompt. Describing a change never updates the JSON: call update_text_layer or update_scene for later edits. Preserve project, scene, and layer IDs. Keep Vietnamese copy concise for 9:16 video and always write tool results back to the project JSON.",
+        "This app manages durable JSON short-video projects. The default project is only a sample/template; new projects must not reuse its scenes unless explicitly requested. For a new project, call create_video_project first. If workflow.sourceUrl contains a YouTube or external video link, YOU must analyze that source yourself using ChatGPT's own browsing/reasoning abilities before writing anything to the project; the Video Editor app does not fetch or analyze the video for you. Use workflow.script only as supporting material when present. Then follow workflow.styleEdit.prompt and call set_project_content_plan for that exact project_id. Stop there so the user can edit and confirm the proposed screen copy. Only after explicit confirmation call generate_project_edit with complete scenes and layers, still following workflow.styleEdit.prompt. Describing a change never updates the JSON: call update_text_layer or update_scene for later edits. Preserve project, scene, and layer IDs. Keep Vietnamese copy concise for 9:16 video and always write tool results back to the project JSON.",
     },
   );
 
@@ -390,7 +422,7 @@ function createVideoEditorServer() {
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     _meta: { ui: { visibility: ["model", "app"] }, "openai/widgetAccessible": true },
   }, async (args, extra) => {
-    const script = String(args.script || "").trim();
+    const script = synthesizeSourceScript(args.script, args.source_url);
     const sourceUrl = String(args.source_url || "").trim();
     if (script.length < 20 && !sourceUrl) return reply(getProject(extra), "Provide either a source script of at least 20 characters or a source video URL.");
     let id = safeId(args.title), suffix = 2;
@@ -481,7 +513,7 @@ const httpServer = createServer(async (req, res) => {
     try {
       const args = await readJson(req);
       const title = String(args.title || "").trim();
-      const script = String(args.script || "").trim();
+      const script = synthesizeSourceScript(args.script, args.source_url);
       const sourceUrl = String(args.source_url || "").trim();
       if (!title || (script.length < 20 && !sourceUrl)) return sendJson(res, 400, { error: "Cần tên project và ít nhất một trong hai: kịch bản từ 20 ký tự hoặc link nguồn video." });
       let id = safeId(args.title), suffix = 2;
