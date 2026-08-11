@@ -1611,12 +1611,37 @@ ${JSON.stringify(plan)}`;
         requestedProjectId = id;
         routeOnApply = true;
         const mode = await ensureHost();
-        if (mode)
-          await callHostTool("select_video_project", { project_id: id });
-        else {
+        if (mode) {
+          const result = await callHostTool("select_video_project", {
+            project_id: id,
+          });
+          // Route from the response to this explicit user action, rather than
+          // waiting for an optional host notification to arrive later.
+          const project =
+            result?.structuredContent?.project || result?.project || null;
+          if (project) {
+            applyProject(project);
+            if (
+              project?.workflow?.status === "ready" &&
+              Array.isArray(project.scenes) &&
+              project.scenes.length > 0
+            ) {
+              showEditor();
+            }
+          }
+        } else {
           const r = await fetch("/api/projects/" + encodeURIComponent(id));
           const data = await r.json();
-          if (data.project) applyProject(data.project);
+          if (data.project) {
+            applyProject(data.project);
+            if (
+              data.project?.workflow?.status === "ready" &&
+              Array.isArray(data.project.scenes) &&
+              data.project.scenes.length > 0
+            ) {
+              showEditor();
+            }
+          }
         }
       }
       function renderPlan(project) {
