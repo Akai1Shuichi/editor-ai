@@ -1405,6 +1405,9 @@
       let activeProject = null,
         routeOnApply = false;
       let pendingProjectId = null;
+      // Set only after the user confirms a content plan. It prevents a project
+      // supplied by the host during startup from taking over the project list.
+      let awaitingGeneratedProjectId = null;
       let requestedProjectId = null,
         currentStudioView = "projectsView";
       const projectViewState = new Map();
@@ -1604,6 +1607,7 @@ ${JSON.stringify(plan)}`;
       }
       async function openStoredProject(id) {
         pendingProjectId = null;
+        awaitingGeneratedProjectId = null;
         requestedProjectId = id;
         routeOnApply = true;
         const mode = await ensureHost();
@@ -1691,6 +1695,7 @@ ${JSON.stringify(plan)}`;
         }
         $("analyzeScript").disabled = true;
         $("analyzeScript").textContent = "Đang tạo project…";
+        awaitingGeneratedProjectId = null;
         routeOnApply = true;
         requestedProjectId = null;
         const mode = await ensureHost();
@@ -1819,6 +1824,21 @@ ${script}`;
           `Đã nhận project v${projectVersion} từ MCP · ${bridgeMode}`,
           true,
         );
+        // Only the project whose plan was explicitly confirmed may
+        // automatically leave the review screen. The host can send a ready
+        // project while the app is opening, and that must not bypass the list.
+        if (
+          awaitingGeneratedProjectId === project.id &&
+          incomingStatus === "ready" &&
+          project?.scenes?.length
+        ) {
+          awaitingGeneratedProjectId = null;
+          projectViewState.set(project.id, "editorView");
+          routeOnApply = false;
+          stopAiWatch();
+          showEditor();
+          return;
+        }
         const planViewOpen = !$("planView").hidden;
         if (
           incomingStatus === "review" &&
@@ -2094,10 +2114,7 @@ ${script}`;
           graceUntil = fastUntil + 90000;
         const poll = async () => {
           await pullLatestProject("ai-watch");
-          if (
-            projectVersion > aiWatchBaseVersion &&
-            lastMutation?.source === "model"
-          ) {
+          if (projectVersion > aiWatchBaseVersion) {
             setServerState(
               `✓ Đã tự đồng bộ thay đổi AI · project v${projectVersion}.`,
               true,
@@ -3463,6 +3480,7 @@ ${script}`;
       };
       $("newProject").onclick = () => {
         pendingProjectId = null;
+        awaitingGeneratedProjectId = null;
         requestedProjectId = null;
         showStudioView("createView");
       };
@@ -3495,10 +3513,60 @@ ${script}`;
           "Đang tạo khung edit",
           "ChatGPT đang chuyển content plan đã xác nhận thành scenes/layers hoàn chỉnh và ghi ngược lại vào JSON project.",
         );
-        const prompt = buildGenerateEditPrompt(activeProject);
-        await (mode === "mcp"
-          ? mcpBridge.sendMessage(prompt)
-          : host().sendFollowUpMessage({ prompt }));
+        const prompt = `Use only the Video Editor app tools.
+
+Bạn là Video Editor chuyên dựng short-form 9:16. Tôi đã xác nhận content plan của project ${activeProject.id}.
+Hãy gọi generate_project_edit với:
+- project_id = "${activeProject.id}"
+- content_plan đúng như bên dưới
+- scenes là mảng scene 9:16 hoàn chỉnh, đủ chi tiết để dựng ngay không cần hỏi lại
+
+QUY TẮC CỨNG:
+- KHÔNG tái sử dụng layout/animation/màu/canvas mặc định của sample project ${SAMPLE_PROJECT_ID || "social-algorithm-short"}. Mỗi project = một concept hình ảnh mới hoàn toàn.
+- Không bịa thêm số liệu/nội dung ngoài content_plan đã xác nhận.
+- Ưu tiên đổi nhịp visual mỗi 2-4 giây trong tổng thời lượng scene nếu duration đủ dài.
+
+Yêu cầu từng scene:
+- Trường cơ bản: id, title, duration, type, layers.
+- Mỗi layer: id, text, x (0-540), y (0-960), size, color, weight, align, maxWidth.
+- Ưu tiên 4-10 text layer/scene khi hợp lý, gồm: headline, kicker, support text, labels, numbers, caption, CTA hoặc annotation ngắn — không làm sơ sài, không liệt kê phẳng thiếu phân tầng.
+- Chọn 1 concept hình ảnh rõ ràng cho scene, ví dụ: flow, timeline, comparison, stacked-cards, checklist, data-reveal, quote-frame, UI-demo, process-map. Có thể tự đặt type mô tả theo nội dung, không bắt buộc bám type sample.
+- Chữ ngắn, keyword rõ, dễ đọc trên mobile.
+- Preserve đúng logic project qua các scene.
+- BẮT BUỘC tuân theo style edit bên dưới.
+
+Mỗi scene BẮT BUỘC có thêm object "style" gồm:
+- layout: một trong focus | split | stacked | flow | timeline | comparison | card-grid | quote | data
+- background: mood nền (màu/gradient/texture)
+- accent: màu nhấn chính
+- kicker: nhãn ngắn phía trên headline (nếu có)
+- motion: nhịp animation ngắn gọn, vd stagger-up, pop-in, wipe-left, counter-rise, pulse, reveal-down
+- mood: cảm xúc tổng thể của scene
+- notes: 1 câu mô tả ý đồ dựng, để editor đọc lướt hiểu ngay
+
+Trước khi trả kết quả, tự kiểm tra: có scene nào trùng layout/animation với sample không? có thiếu field nào trong style không? nếu có, sửa lại trước khi gọi tool.
+
+STYLE EDIT:
+${stylePrompt(activeProject)}
+
+Content plan đã xác nhận:
+${JSON.stringify(plan)}`;
+        awaitingGeneratedProjectId = activeProject.id;
+        try {
+          await (mode === "mcp"
+            ? mcpBridge.sendMessage(prompt)
+            : host().sendFollowUpMessage({ prompt }));
+        } catch (e) {
+          awaitingGeneratedProjectId = null;
+          $("confirmPlan").disabled = false;
+          $("confirmPlan").textContent = "Xác nhận & tạo khung edit";
+          updateWorkflowCard(
+            "warn",
+            "Chưa gửi được yêu cầu tạo khung edit",
+            e?.message || String(e),
+          );
+          return;
+        }
         routeOnApply = true;
         startAiWatch(activeProject.version);
         $("confirmPlan").disabled = false;
