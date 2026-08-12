@@ -29,6 +29,9 @@ const MAX_HTML_BYTES = 1_000_000;
 const APP_RESOURCE_URI = "ui://youtube-html-editor/app.html";
 const APP_HTML_PATH = join(__dirname, "public", "app.html");
 const EMPTY_WIDGET_PATH = join(__dirname, "public", "editor-widget.html");
+const APP_CSP = {
+  frameDomains: ["https://www.youtube.com", "https://www.youtube-nocookie.com"],
+};
 const projectSchema = z.object({
   id: z.string().uuid(),
   title: z.string(),
@@ -56,7 +59,7 @@ async function renderAppHtml() {
 
   return templateHtml.replace(
     "\"__MCP_APPS_BUNDLE__\"",
-    htmlScriptSafeString(appBundle),
+    () => htmlScriptSafeString(appBundle),
   );
 }
 
@@ -115,13 +118,14 @@ function createMcpServer() {
     APP_RESOURCE_URI,
     {
       description: "Create a YouTube project and ask ChatGPT to analyze the video in the current conversation.",
-      _meta: { ui: { prefersBorder: true } },
+      _meta: { ui: { csp: APP_CSP, prefersBorder: true } },
     },
     async () => ({
       contents: [
         {
           uri: APP_RESOURCE_URI,
           mimeType: RESOURCE_MIME_TYPE,
+          _meta: { ui: { csp: APP_CSP } },
           text: await renderAppHtml(),
         },
       ],
