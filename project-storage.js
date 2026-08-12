@@ -96,6 +96,12 @@ export async function getEditHtml(projectId) {
   }
 }
 
+export async function saveEditHtml(projectId, html) {
+  const path = editHtmlFilePath(projectId);
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, html, "utf8");
+}
+
 export async function listProjects() {
   await ensureProjectsDirectory();
   const entries = await readdir(PROJECTS_DIR, { withFileTypes: true });

@@ -2,16 +2,124 @@ import { createServer } from "node:http";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { z } from "zod";
 
-import { getEditHtml } from "./project-storage.js";
+import {
+  createProject,
+  getEditHtml,
+  getProject,
+  listProjects,
+  saveEditHtml,
+  saveProject,
+} from "./project-storage.js";
 
 const PORT = Number.parseInt(process.env.PORT ?? "8787", 10);
+const MAX_HTML_BYTES = 1_000_000;
+const projectSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  sourceUrl: z.string().url(),
+  status: z.enum(["created", "html_ready"]),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  previewUrl: z.string().nullable(),
+});
+const projectsSchema = z.array(projectSchema);
+
+function toolResult(structuredContent, message) {
+  return {
+    structuredContent,
+    content: [{ type: "text", text: message }],
+  };
+}
+
+function toolError(message) {
+  return {
+    isError: true,
+    structuredContent: { error: message },
+    content: [{ type: "text", text: message }],
+  };
+}
 
 function createMcpServer() {
-  return new McpServer({
+  const server = new McpServer({
     name: "youtube-html-editor",
     version: "0.1.0",
   });
+
+  server.registerTool("create_project", {
+    title: "Create project",
+    description: "Create a project from a title and a valid YouTube URL.",
+    inputSchema: {
+      title: z.string().trim().min(1).max(200),
+      source_url: z.string().trim().url(),
+    },
+    outputSchema: { project: projectSchema },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  }, async ({ title, source_url }) => {
+    try {
+      const project = await createProject(title, source_url);
+      return toolResult({ project }, `Created project ${project.id}.`);
+    } catch (error) {
+      return toolError(error.message);
+    }
+  });
+
+  server.registerTool("get_project", {
+    title: "Get project",
+    description: "Get project metadata and preview URL.",
+    inputSchema: { project_id: z.string().uuid() },
+    outputSchema: { project: projectSchema.nullable() },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  }, async ({ project_id }) => {
+    const project = await getProject(project_id);
+    return project
+      ? toolResult({ project }, `Loaded project ${project.id}.`)
+      : toolError(`Project ${project_id} was not found.`);
+  });
+
+  server.registerTool("list_projects", {
+    title: "List projects",
+    description: "List stored projects for selection.",
+    outputSchema: { projects: projectsSchema },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  }, async () => {
+    const projects = await listProjects();
+    return toolResult({ projects }, `Found ${projects.length} project(s).`);
+  });
+
+  server.registerTool("save_edit_html", {
+    title: "Save edit HTML",
+    description: "Save a complete, self-contained HTML edit mockup for one project.",
+    inputSchema: {
+      project_id: z.string().uuid(),
+      html: z.string().trim().min(1).max(MAX_HTML_BYTES),
+      title: z.string().trim().min(1).max(200).optional(),
+    },
+    outputSchema: { project: projectSchema },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  }, async ({ project_id, html, title }) => {
+    const project = await getProject(project_id);
+
+    if (!project) {
+      return toolError(`Project ${project_id} was not found.`);
+    }
+
+    if (Buffer.byteLength(html, "utf8") > MAX_HTML_BYTES) {
+      return toolError(`html must not exceed ${MAX_HTML_BYTES} bytes.`);
+    }
+
+    await saveEditHtml(project_id, html);
+    const savedProject = await saveProject({
+      ...project,
+      ...(title ? { title } : {}),
+      status: "html_ready",
+      previewUrl: `/projects/${project_id}/preview`,
+    });
+    return toolResult({ project: savedProject }, `Saved edit HTML for project ${project_id}.`);
+  });
+
+  return server;
 }
 
 async function readJsonBody(request) {
