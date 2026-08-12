@@ -741,6 +741,22 @@
         );
 
         app.ontoolresult = async (event) => {
+          if (event.toolName === "save_edit_html") {
+            const savedProject = event.result?.structuredContent?.project;
+
+            if (savedProject) {
+              stopPolling();
+              renderProject(savedProject);
+              setStatus(
+                actionStatus,
+                `Đã lưu edit.html cho project ${savedProject.id}. Có thể mở preview ngay.`,
+                "success",
+              );
+            }
+
+            return;
+          }
+
           if (event.toolName !== "open_app") {
             return;
           }

@@ -18,6 +18,14 @@ npm start
 MCP: `http://localhost:8787/mcp`  
 Standalone: `http://localhost:8787/editor`
 
+Preview URL được trả về dưới dạng URL tuyệt đối. Khi chạy sau tunnel/reverse proxy, có thể cố định origin public:
+
+```bash
+PUBLIC_BASE_URL=https://your-public-domain.example npm start
+```
+
+Nếu không đặt biến này, server dùng `x-forwarded-host`/`Host` của request MCP để tạo URL preview.
+
 Sau khi cập nhật server, vào ChatGPT Plugins và **Refresh/Scan tools**, rồi mở **chat mới** để tránh UI resource cũ.
 
 # ChatGPT Video Editor MCP v0.3

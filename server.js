@@ -25,6 +25,7 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const PORT = Number.parseInt(process.env.PORT ?? "8787", 10);
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL?.replace(/\/$/, "") ?? null;
 const MAX_HTML_BYTES = 1_000_000;
 const APP_RESOURCE_URI = "ui://youtube-html-editor/app.html";
 const APP_HTML_PATH = join(__dirname, "public", "app.html");
@@ -97,7 +98,32 @@ async function buildOpenAppState(projectId) {
   return { project, projects };
 }
 
-function createMcpServer() {
+function createPublicUrl(pathname, requestOrigin) {
+  const baseUrl = PUBLIC_BASE_URL ?? requestOrigin ?? `http://localhost:${PORT}`;
+  return new URL(pathname, `${baseUrl}/`).toString();
+}
+
+function getRequestOrigin(request) {
+  const forwardedProto = request.headers["x-forwarded-proto"]?.split(",", 1)[0]?.trim();
+  const forwardedHost = request.headers["x-forwarded-host"]?.split(",", 1)[0]?.trim();
+  const protocol = forwardedProto || (request.socket.encrypted ? "https" : "http");
+  const host = forwardedHost || request.headers.host;
+
+  return host ? `${protocol}://${host}` : null;
+}
+
+function projectForResponse(project, requestOrigin) {
+  if (!project?.previewUrl) {
+    return project;
+  }
+
+  return {
+    ...project,
+    previewUrl: createPublicUrl(`/projects/${project.id}/edit.html`, requestOrigin),
+  };
+}
+
+function createMcpServer({ requestOrigin } = {}) {
   const server = new McpServer({
     name: "youtube-html-editor",
     version: "0.1.0",
@@ -148,6 +174,8 @@ function createMcpServer() {
   }, async ({ project_id }) => {
     try {
       const appState = await buildOpenAppState(project_id);
+      appState.project = projectForResponse(appState.project, requestOrigin);
+      appState.projects = appState.projects.map((project) => projectForResponse(project, requestOrigin));
       const selectedProjectId = appState.project?.id ?? "none";
       return toolResult(appState, `Opened app with project ${selectedProjectId}.`);
     } catch (error) {
@@ -182,7 +210,7 @@ function createMcpServer() {
   }, async ({ project_id }) => {
     const project = await getProject(project_id);
     return project
-      ? toolResult({ project }, `Loaded project ${project.id}.`)
+      ? toolResult({ project: projectForResponse(project, requestOrigin) }, `Loaded project ${project.id}.`)
       : toolError(`Project ${project_id} was not found.`);
   });
 
@@ -193,7 +221,10 @@ function createMcpServer() {
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   }, async () => {
     const projects = await listProjects();
-    return toolResult({ projects }, `Found ${projects.length} project(s).`);
+    return toolResult(
+      { projects: projects.map((project) => projectForResponse(project, requestOrigin)) },
+      `Found ${projects.length} project(s).`,
+    );
   });
 
   server.registerTool("save_edit_html", {
@@ -222,9 +253,12 @@ function createMcpServer() {
       ...project,
       ...(title ? { title } : {}),
       status: "html_ready",
-      previewUrl: `/projects/${project_id}/preview`,
+      previewUrl: createPublicUrl(`/projects/${project_id}/edit.html`, requestOrigin),
     });
-    return toolResult({ project: savedProject }, `Saved edit HTML for project ${project_id}.`);
+    return toolResult(
+      { project: projectForResponse(savedProject, requestOrigin) },
+      `Saved edit HTML for project ${project_id}.`,
+    );
   });
 
   return server;
@@ -284,7 +318,7 @@ const httpServer = createServer(async (request, response) => {
     }
   }
 
-  const previewMatch = url.pathname.match(/^\/projects\/([^/]+)\/preview$/);
+  const previewMatch = url.pathname.match(/^\/projects\/([^/]+)\/(?:preview|edit\.html)$/);
   if (request.method === "GET" && previewMatch) {
     try {
       const html = await getEditHtml(decodeURIComponent(previewMatch[1]));
@@ -318,7 +352,7 @@ const httpServer = createServer(async (request, response) => {
 
   try {
     const body = await readJsonBody(request);
-    const server = createMcpServer();
+    const server = createMcpServer({ requestOrigin: getRequestOrigin(request) });
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
 
     await server.connect(transport);
