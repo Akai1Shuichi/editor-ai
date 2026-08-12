@@ -62,12 +62,12 @@ Mục tiêu bản đầu: người dùng tạo project bằng link YouTube trong
 
 ## 7. Làm widget MCP App: màn Get project
 
-- [ ] Gọi `list_projects` để người dùng chọn project.
-- [ ] Gọi `get_project` sau khi chọn và render metadata/trạng thái.
-- [ ] Nếu `status = html_ready`, hiển thị nút mở `previewUrl` trong tab mới.
-- [ ] Tạo nút “Tạo bản edit bằng HTML”.
-- [ ] Khi bấm, gửi `ui/message`: yêu cầu ChatGPT dựa vào phân tích trong chat tạo HTML và gọi `save_edit_html` cho đúng `project_id`.
-- [ ] Sau đó poll `get_project` trong thời gian ngắn hoặc có nút “Làm mới” để thấy khi HTML đã sẵn sàng.
+- [x] Gọi `list_projects` để người dùng chọn project.
+- [x] Gọi `get_project` sau khi chọn và render metadata/trạng thái.
+- [x] Nếu `status = html_ready`, hiển thị nút mở `previewUrl` trong tab mới.
+- [x] Tạo nút “Tạo bản edit bằng HTML”.
+- [x] Khi bấm, gửi `ui/message`: yêu cầu ChatGPT dựa vào phân tích trong chat tạo HTML và gọi `save_edit_html` cho đúng `project_id`.
+- [x] Sau đó poll `get_project` trong thời gian ngắn hoặc có nút “Làm mới” để thấy khi HTML đã sẵn sàng.
 
 ## 8. Nối tool mở app
 

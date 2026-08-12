@@ -149,7 +149,18 @@
         font: inherit;
       }
 
-      input:focus {
+      select {
+        width: 100%;
+        padding: 14px 16px;
+        border: 1px solid rgba(23, 18, 12, 0.14);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.96);
+        color: var(--ink);
+        font: inherit;
+      }
+
+      input:focus,
+      select:focus {
         outline: 2px solid rgba(194, 77, 44, 0.28);
         outline-offset: 2px;
       }
@@ -176,6 +187,12 @@
       button[disabled] {
         cursor: wait;
         opacity: 0.7;
+      }
+
+      button.secondary {
+        background: rgba(23, 18, 12, 0.06);
+        color: var(--ink);
+        border: 1px solid rgba(23, 18, 12, 0.1);
       }
 
       .hint {
@@ -246,6 +263,36 @@
         font-size: 13px;
       }
 
+      .stack {
+        display: grid;
+        gap: 20px;
+      }
+
+      .actions a.button-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        padding: 14px 20px;
+        border-radius: 999px;
+        border: 1px solid rgba(23, 18, 12, 0.1);
+        background: rgba(23, 18, 12, 0.06);
+        color: var(--ink);
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .actions a.button-link[aria-disabled="true"] {
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
+      .meta-note {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
       @media (min-width: 860px) {
         .grid {
           grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
@@ -267,59 +314,93 @@
         </header>
 
         <div class="body">
-          <div class="grid">
-            <form id="create-project-form">
-              <div class="field">
-                <label for="title">Title</label>
-                <input id="title" name="title" maxlength="200" placeholder="Ví dụ: Hook analysis cutdown" required />
-              </div>
+          <div class="stack">
+            <div class="grid">
+              <form id="create-project-form">
+                <div class="field">
+                  <label for="title">Title</label>
+                  <input id="title" name="title" maxlength="200" placeholder="Ví dụ: Hook analysis cutdown" required />
+                </div>
 
+                <div class="field">
+                  <label for="source-url">Source URL</label>
+                  <input
+                    id="source-url"
+                    name="source_url"
+                    type="url"
+                    inputmode="url"
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    required
+                  />
+                </div>
+
+                <div class="actions">
+                  <button id="submit-button" type="submit">Tạo project &amp; phân tích</button>
+                  <span class="hint">Bridge sẽ dùng `tools/call` và sau đó gửi `ui/message`.</span>
+                </div>
+              </form>
+
+              <aside class="panel">
+                <h2>Trạng thái</h2>
+                <div id="connection-status" class="status">Đang khởi tạo widget…</div>
+                <div id="action-status" class="status">Chưa có thao tác nào.</div>
+              </aside>
+            </div>
+
+            <section class="panel" id="project-panel" hidden>
+              <h2>Project hiện tại</h2>
+              <dl>
+                <div>
+                  <dt>Project ID</dt>
+                  <dd><code id="project-id">-</code></dd>
+                </div>
+                <div>
+                  <dt>Status</dt>
+                  <dd id="project-status">-</dd>
+                </div>
+                <div>
+                  <dt>Source URL</dt>
+                  <dd><a id="project-url" href="#" rel="noreferrer" target="_blank">-</a></dd>
+                </div>
+                <div>
+                  <dt>Preview</dt>
+                  <dd><a id="project-preview" href="#" rel="noreferrer" target="_blank">-</a></dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="panel">
+              <h2>Get Project</h2>
               <div class="field">
-                <label for="source-url">Source URL</label>
-                <input
-                  id="source-url"
-                  name="source_url"
-                  type="url"
-                  inputmode="url"
-                  placeholder="https://www.youtube.com/watch?v=..."
-                  required
-                />
+                <label for="project-select">Chọn project</label>
+                <select id="project-select">
+                  <option value="">Đang tải danh sách project…</option>
+                </select>
               </div>
 
               <div class="actions">
-                <button id="submit-button" type="submit">Tạo project &amp; phân tích</button>
-                <span class="hint">Bridge sẽ dùng `tools/call` và sau đó gửi `ui/message`.</span>
+                <button id="refresh-list-button" type="button" class="secondary">Làm mới danh sách</button>
+                <button id="refresh-project-button" type="button" class="secondary">Làm mới project</button>
+                <a
+                  id="open-preview-button"
+                  class="button-link"
+                  href="#"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-disabled="true"
+                >Mở preview</a>
               </div>
-            </form>
 
-            <aside class="panel">
-              <h2>Trạng thái</h2>
-              <div id="connection-status" class="status">Đang khởi tạo widget…</div>
-              <div id="action-status" class="status">Chưa có thao tác nào.</div>
-            </aside>
+              <div class="actions">
+                <button id="generate-html-button" type="button">Tạo bản edit bằng HTML</button>
+                <span class="hint">Widget sẽ gửi `ui/message` để ChatGPT gọi `save_edit_html`.</span>
+              </div>
+
+              <p class="meta-note">
+                Sau khi gửi yêu cầu tạo HTML, widget sẽ poll `get_project` ngắn để thấy khi trạng thái chuyển sang `html_ready`.
+              </p>
+            </section>
           </div>
-
-          <section class="panel" id="project-panel" hidden>
-            <h2>Project vừa tạo</h2>
-            <dl>
-              <div>
-                <dt>Project ID</dt>
-                <dd><code id="project-id">-</code></dd>
-              </div>
-              <div>
-                <dt>Status</dt>
-                <dd id="project-status">-</dd>
-              </div>
-              <div>
-                <dt>Source URL</dt>
-                <dd><a id="project-url" href="#" rel="noreferrer" target="_blank">-</a></dd>
-              </div>
-              <div>
-                <dt>Preview</dt>
-                <dd><a id="project-preview" href="#" rel="noreferrer" target="_blank">-</a></dd>
-              </div>
-            </dl>
-          </section>
         </div>
       </section>
     </main>
@@ -343,11 +424,18 @@
       const projectStatusNode = document.getElementById("project-status");
       const projectUrlNode = document.getElementById("project-url");
       const projectPreviewNode = document.getElementById("project-preview");
+      const projectSelect = document.getElementById("project-select");
+      const refreshListButton = document.getElementById("refresh-list-button");
+      const refreshProjectButton = document.getElementById("refresh-project-button");
+      const openPreviewButton = document.getElementById("open-preview-button");
+      const generateHtmlButton = document.getElementById("generate-html-button");
 
       const state = {
         app: null,
         projectId: null,
         project: null,
+        projects: [],
+        pollTimer: null,
       };
 
       function setStatus(node, message, kind = "") {
@@ -364,10 +452,18 @@
         return state.app !== null;
       }
 
+      function setButtonBusy(button, busy, busyLabel, idleLabel) {
+        button.disabled = busy;
+        button.textContent = busy ? busyLabel : idleLabel;
+      }
+
       async function callToolInStandalone(name, args) {
         const response = await fetch("/mcp", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json, text/event-stream",
+          },
           body: JSON.stringify({
             jsonrpc: "2.0",
             id: crypto.randomUUID(),
@@ -376,7 +472,12 @@
           }),
         });
 
-        const result = await response.json();
+        const raw = await response.text();
+        const eventData = raw
+          .split("\n")
+          .find((line) => line.startsWith("data: "));
+        const payload = eventData ? eventData.slice(6) : raw;
+        const result = JSON.parse(payload);
 
         if (result.error) {
           throw new Error(result.error.message ?? "Tool call failed.");
@@ -389,12 +490,24 @@
         return result.result;
       }
 
-      async function createProject(args) {
+      async function callTool(name, args = {}) {
         if (isBridgeReady()) {
-          return state.app.callServerTool({ name: "create_project", arguments: args });
+          return state.app.callServerTool({ name, arguments: args });
         }
 
-        return callToolInStandalone("create_project", args);
+        return callToolInStandalone(name, args);
+      }
+
+      async function createProject(args) {
+        return callTool("create_project", args);
+      }
+
+      async function listProjects() {
+        return callTool("list_projects");
+      }
+
+      async function getProjectById(projectId) {
+        return callTool("get_project", { project_id: projectId });
       }
 
       async function sendAnalysisMessage(project) {
@@ -438,6 +551,55 @@
         );
       }
 
+      async function sendGenerateHtmlMessage(project) {
+        const text = [
+          `Dựa vào phần phân tích đã có trong conversation, hãy tạo bản edit bằng HTML cho project này.`,
+          `project_id: ${project.id}`,
+          `source_url: ${project.sourceUrl}`,
+          "Hãy tạo một tài liệu HTML tự chứa hoàn chỉnh rồi bắt buộc gọi save_edit_html cho đúng project_id.",
+          "Chỉ thông báo hoàn tất sau khi tool save_edit_html thành công.",
+        ].join("\n");
+
+        if (!isBridgeReady()) {
+          setStatus(
+            actionStatus,
+            `Project ${project.id} đã được chọn nhưng standalone mode không gửi được ui/message. Hãy mở app trong ChatGPT để yêu cầu save_edit_html.`,
+            "success",
+          );
+          return;
+        }
+
+        await state.app.sendMessage({
+          role: "user",
+          content: [{ type: "text", text }],
+        });
+
+        await state.app.updateModelContext({
+          structuredContent: {
+            current_project: {
+              id: project.id,
+              title: project.title,
+              sourceUrl: project.sourceUrl,
+              status: project.status,
+              previewUrl: project.previewUrl,
+            },
+          },
+        });
+
+        setStatus(
+          actionStatus,
+          `Đã gửi yêu cầu tạo HTML cho project ${project.id}. Đang chờ save_edit_html...`,
+          "success",
+        );
+      }
+
+      function stopPolling() {
+        if (state.pollTimer !== null) {
+          clearInterval(state.pollTimer);
+          state.pollTimer = null;
+        }
+      }
+
       function renderProject(project) {
         state.projectId = project.id;
         state.project = project;
@@ -446,13 +608,105 @@
         projectStatusNode.textContent = project.status;
         projectUrlNode.textContent = project.sourceUrl;
         projectUrlNode.href = project.sourceUrl;
+        projectSelect.value = project.id;
         if (project.previewUrl) {
           projectPreviewNode.textContent = project.previewUrl;
           projectPreviewNode.href = project.previewUrl;
+          openPreviewButton.href = project.previewUrl;
+          openPreviewButton.setAttribute("aria-disabled", "false");
         } else {
           projectPreviewNode.textContent = "Chưa có edit.html";
           projectPreviewNode.removeAttribute("href");
+          openPreviewButton.href = "#";
+          openPreviewButton.setAttribute("aria-disabled", "true");
         }
+      }
+
+      function renderProjectOptions(projects) {
+        state.projects = projects;
+        const selectedId = state.projectId;
+
+        if (projects.length === 0) {
+          projectSelect.innerHTML = '<option value="">Chưa có project nào</option>';
+          return;
+        }
+
+        projectSelect.innerHTML = [
+          '<option value="">Chọn một project</option>',
+          ...projects.map((project) => {
+            const label = `${project.title} · ${project.status} · ${project.id.slice(0, 8)}`;
+            return `<option value="${project.id}">${label}</option>`;
+          }),
+        ].join("");
+
+        if (selectedId && projects.some((project) => project.id === selectedId)) {
+          projectSelect.value = selectedId;
+        }
+      }
+
+      async function refreshProjectList(autoSelectLatest = false) {
+        const result = await listProjects();
+        const projects = result.structuredContent?.projects ?? [];
+        renderProjectOptions(projects);
+
+        if (autoSelectLatest && !state.projectId && projects[0]) {
+          await loadProject(projects[0].id);
+        }
+      }
+
+      async function loadProject(projectId) {
+        if (!projectId) {
+          return;
+        }
+
+        const result = await getProjectById(projectId);
+        const project = result.structuredContent?.project;
+
+        if (!project) {
+          throw new Error(`Project ${projectId} was not found.`);
+        }
+
+        renderProject(project);
+        return project;
+      }
+
+      async function pollProjectUntilReady(projectId, maxAttempts = 8, intervalMs = 2500) {
+        stopPolling();
+
+        let attempts = 0;
+        state.pollTimer = setInterval(async () => {
+          attempts += 1;
+
+          try {
+            const project = await loadProject(projectId);
+
+            if (project?.status === "html_ready") {
+              stopPolling();
+              setStatus(
+                actionStatus,
+                `Project ${project.id} đã có edit HTML. Có thể mở preview ngay.`,
+                "success",
+              );
+              return;
+            }
+
+            if (attempts >= maxAttempts) {
+              stopPolling();
+              setStatus(
+                actionStatus,
+                `Đã làm mới project ${projectId} nhiều lần nhưng HTML chưa sẵn sàng. Bấm "Làm mới project" để kiểm tra tiếp.`,
+                "",
+              );
+            }
+          } catch (error) {
+            stopPolling();
+            setStatus(
+              actionStatus,
+              error instanceof Error ? error.message : "Không poll được trạng thái project.",
+              "error",
+            );
+          }
+        }, intervalMs);
       }
 
       async function connectBridge() {
@@ -493,6 +747,17 @@
         );
       }
 
+      try {
+        await refreshProjectList(true);
+      } catch (error) {
+        setStatus(
+          actionStatus,
+          error instanceof Error ? error.message : "Không tải được danh sách project.",
+          "error",
+        );
+        projectSelect.innerHTML = '<option value="">Không tải được project</option>';
+      }
+
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         setSubmitting(true);
@@ -508,6 +773,7 @@
             throw new Error("Tool did not return project metadata.");
           }
 
+          await refreshProjectList();
           renderProject(project);
           await sendAnalysisMessage(project);
         } catch (error) {
@@ -518,6 +784,88 @@
           );
         } finally {
           setSubmitting(false);
+        }
+      });
+
+      projectSelect.addEventListener("change", async (event) => {
+        const projectId = event.target.value;
+
+        if (!projectId) {
+          return;
+        }
+
+        setStatus(actionStatus, `Đang tải project ${projectId}...`);
+
+        try {
+          const project = await loadProject(projectId);
+          setStatus(actionStatus, `Đã tải project ${project.id}.`, "success");
+        } catch (error) {
+          setStatus(
+            actionStatus,
+            error instanceof Error ? error.message : "Không tải được project.",
+            "error",
+          );
+        }
+      });
+
+      refreshListButton.addEventListener("click", async () => {
+        setButtonBusy(refreshListButton, true, "Đang tải…", "Làm mới danh sách");
+
+        try {
+          await refreshProjectList();
+          setStatus(actionStatus, "Đã làm mới danh sách project.", "success");
+        } catch (error) {
+          setStatus(
+            actionStatus,
+            error instanceof Error ? error.message : "Không tải được danh sách project.",
+            "error",
+          );
+        } finally {
+          setButtonBusy(refreshListButton, false, "Đang tải…", "Làm mới danh sách");
+        }
+      });
+
+      refreshProjectButton.addEventListener("click", async () => {
+        if (!state.projectId) {
+          setStatus(actionStatus, "Hãy chọn project trước.", "error");
+          return;
+        }
+
+        setButtonBusy(refreshProjectButton, true, "Đang tải…", "Làm mới project");
+
+        try {
+          const project = await loadProject(state.projectId);
+          setStatus(actionStatus, `Đã làm mới project ${project.id}.`, "success");
+        } catch (error) {
+          setStatus(
+            actionStatus,
+            error instanceof Error ? error.message : "Không làm mới được project.",
+            "error",
+          );
+        } finally {
+          setButtonBusy(refreshProjectButton, false, "Đang tải…", "Làm mới project");
+        }
+      });
+
+      generateHtmlButton.addEventListener("click", async () => {
+        if (!state.project) {
+          setStatus(actionStatus, "Hãy chọn project trước.", "error");
+          return;
+        }
+
+        setButtonBusy(generateHtmlButton, true, "Đang gửi yêu cầu…", "Tạo bản edit bằng HTML");
+
+        try {
+          await sendGenerateHtmlMessage(state.project);
+          await pollProjectUntilReady(state.project.id);
+        } catch (error) {
+          setStatus(
+            actionStatus,
+            error instanceof Error ? error.message : "Không gửi được yêu cầu tạo HTML.",
+            "error",
+          );
+        } finally {
+          setButtonBusy(generateHtmlButton, false, "Đang gửi yêu cầu…", "Tạo bản edit bằng HTML");
         }
       });
     </script>
