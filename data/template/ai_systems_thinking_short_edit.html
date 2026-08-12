@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AI Coding ≠ Systems Thinking — Short Video Edit</title>
+<style>
+  :root{
+    --bg:#06111b;
+    --panel:#0b1b29;
+    --text:#eaf7ff;
+    --muted:#8fb3c7;
+    --cyan:#42e8ff;
+    --yellow:#ffd85a;
+    --green:#7cff9b;
+    --red:#ff5d7d;
+    --line:rgba(255,255,255,.13);
+  }
+  *{box-sizing:border-box}
+  html,body{
+    margin:0;
+    background:#02070b;
+    color:var(--text);
+    font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  body{
+    min-height:100vh;
+    display:grid;
+    place-items:center;
+    overflow:hidden;
+  }
+  .app{
+    display:flex;
+    gap:18px;
+    align-items:center;
+    padding:18px;
+  }
+  .phone{
+    position:relative;
+    width:min(54vh,430px);
+    aspect-ratio:9/16;
+    background:
+      radial-gradient(circle at 75% 15%, rgba(66,232,255,.13), transparent 28%),
+      radial-gradient(circle at 10% 80%, rgba(124,255,155,.08), transparent 24%),
+      linear-gradient(180deg,#071420,#040b11);
+    overflow:hidden;
+    border-radius:28px;
+    border:1px solid rgba(255,255,255,.11);
+    box-shadow:0 30px 90px rgba(0,0,0,.55);
+  }
+  .grain{
+    position:absolute; inset:0; pointer-events:none; z-index:80; opacity:.10;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+    mix-blend-mode:screen;
+  }
+  .hud{
+    position:absolute; inset:0; z-index:70; pointer-events:none;
+  }
+  .topbar{
+    position:absolute; left:22px; right:22px; top:18px;
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:11px; letter-spacing:.14em; color:var(--muted); text-transform:uppercase;
+  }
+  .topbar .dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);display:inline-block;margin-right:7px;box-shadow:0 0 16px var(--cyan)}
+  .progress{
+    position:absolute; left:18px; right:18px; bottom:14px;
+    height:3px; background:rgba(255,255,255,.10); border-radius:99px; overflow:hidden;
+  }
+  .progress>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--green));}
+  .subtitle{
+    position:absolute; left:26px; right:26px; bottom:42px;
+    padding:10px 12px 11px;
+    background:rgba(2,9,14,.72);
+    border:1px solid rgba(255,255,255,.08);
+    backdrop-filter:blur(10px);
+    border-radius:14px;
+    font-size:13px; line-height:1.35; text-align:center; color:#edfaff;
+  }
+  .scene{
+    position:absolute; inset:0; padding:72px 34px 118px;
+    opacity:0; transform:scale(1.02); pointer-events:none;
+  }
+  .scene.active{opacity:1;transform:none;pointer-events:auto}
+  .kicker{
+    font-size:11px; font-weight:800; letter-spacing:.18em; text-transform:uppercase; color:var(--cyan);
+    margin-bottom:10px;
+  }
+  h1,h2,h3,p{margin:0}
+  h1{font-size:44px;line-height:.94;letter-spacing:-.045em}
+  h2{font-size:31px;line-height:1.0;letter-spacing:-.035em}
+  h3{font-size:18px;line-height:1.05}
+  .muted{color:var(--muted)}
+  .cyan{color:var(--cyan)}
+  .yellow{color:var(--yellow)}
+  .green{color:var(--green)}
+  .red{color:var(--red)}
+  .center{display:grid;place-items:center;text-align:center}
+  .full{height:100%}
+  .stack{display:flex;flex-direction:column;gap:14px}
+  .row{display:flex;gap:12px;align-items:center}
+  .pill{
+    display:inline-flex;align-items:center;gap:8px;
+    border:1px solid var(--line); border-radius:999px; padding:8px 12px;
+    font-size:12px; color:var(--muted); background:rgba(255,255,255,.025);
+  }
+  .card{
+    background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.022));
+    border:1px solid var(--line); border-radius:18px; padding:18px;
+  }
+  .divider{height:1px;background:var(--line);width:100%}
+  .hero-equation{
+    margin-top:24px; display:grid; gap:10px; width:100%;
+  }
+  .hero-equation .big{
+    font-weight:900; font-size:46px; line-height:.94; letter-spacing:-.05em;
+  }
+  .codebox{
+    margin-top:22px; border:1px solid var(--line); border-radius:18px; overflow:hidden;
+    background:#06101a;
+  }
+  .codehead{height:34px;padding:0 12px;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--line)}
+  .codehead i{width:7px;height:7px;border-radius:50%;background:#27465b}
+  .code{
+    padding:14px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:11px;line-height:1.65;color:#bad7e8; white-space:pre;
+  }
+  .meter{margin-top:18px}
+  .meterline{height:8px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;margin-top:7px}
+  .meterline i{display:block;height:100%;border-radius:99px}
+  .meter-under i{width:22%;background:var(--red)}
+  .meter-debt i{width:87%;background:var(--yellow)}
+  .compare{
+    display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:24px; height:52%;
+  }
+  .compare .card{padding:16px 13px}
+  .flow{
+    display:grid; gap:10px; margin-top:18px;
+  }
+  .node{
+    position:relative; padding:13px 12px; border:1px solid var(--line);
+    background:rgba(255,255,255,.025); border-radius:13px; text-align:center; font-weight:800;
+  }
+  .arrow{text-align:center;color:var(--muted);font-size:18px}
+  .branches{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:10px;
+  }
+  .branch{padding:9px 6px;border:1px solid var(--line);border-radius:12px;text-align:center;font-size:12px}
+  .arch{
+    position:relative;height:56%;margin-top:25px;
+  }
+  .arch .n{
+    position:absolute; padding:10px 13px; border-radius:12px;
+    border:1px solid rgba(66,232,255,.28); background:#071824; font-weight:800; font-size:12px;
+    box-shadow:0 0 30px rgba(66,232,255,.05);
+  }
+  .arch svg{position:absolute;inset:0;width:100%;height:100%}
+  .arch path{stroke:rgba(66,232,255,.32);stroke-width:1.5;fill:none;stroke-dasharray:5 6}
+  .arch .you{
+    position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);
+    width:104px;height:104px;border-radius:50%;display:grid;place-items:center;text-align:center;
+    border:1px solid rgba(255,216,90,.35);background:radial-gradient(circle,rgba(255,216,90,.12),rgba(255,216,90,.025));
+    font-size:12px;font-weight:900;color:var(--yellow);
+  }
+  .qcards{display:grid;gap:12px;margin-top:22px}
+  .qcard{
+    display:grid;grid-template-columns:42px 1fr;gap:12px;align-items:center;
+    border:1px solid var(--line);border-radius:16px;padding:14px;background:rgba(255,255,255,.025);
+  }
+  .num{font-size:24px;font-weight:950;color:var(--cyan)}
+  .appmock{
+    margin-top:20px; border:1px solid rgba(124,255,155,.25); border-radius:18px; padding:16px;
+    background:linear-gradient(180deg,rgba(124,255,155,.07),rgba(255,255,255,.02));
+  }
+  .appmock .screen{
+    height:110px;border-radius:12px;background:
+      linear-gradient(90deg,rgba(255,255,255,.08) 50%,transparent 50%) 0 0/32px 100%,
+      linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+    display:grid;place-items:center;font-weight:900;color:var(--green);
+  }
+  .warns{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}
+  .warn{padding:10px;border-radius:12px;border:1px solid rgba(255,93,125,.22);background:rgba(255,93,125,.06);font-size:11px;font-weight:800;color:#ffd4dc}
+  .bigstat{font-size:48px;font-weight:950;letter-spacing:-.05em;color:var(--yellow)}
+  .pipeline{display:grid;gap:9px;margin-top:22px}
+  .step{
+    display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:center;
+    padding:11px 12px;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.022);
+  }
+  .step i{
+    width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+    border:1px solid rgba(66,232,255,.32);color:var(--cyan);font-style:normal;font-size:11px;font-weight:900
+  }
+  .speed{
+    display:grid;gap:18px;margin-top:34px;
+  }
+  .bars{display:grid;gap:9px}
+  .bar{display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center;font-size:11px;color:var(--muted)}
+  .bar i{display:block;height:9px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;position:relative}
+  .bar i:after{content:"";position:absolute;inset:0 auto 0 0;border-radius:inherit}
+  .bar.code i:after{width:92%;background:var(--cyan)}
+  .bar.judgment i:after{width:58%;background:var(--yellow)}
+  .final-diagram{position:relative;height:46%;margin-top:22px}
+  .final-diagram svg{position:absolute;inset:0;width:100%;height:100%}
+  .final-diagram path{stroke:rgba(124,255,155,.55);stroke-width:2;fill:none}
+  .final-diagram .box{
+    position:absolute;padding:12px 14px;border:1px solid rgba(124,255,155,.28);border-radius:14px;background:#061812;font-size:12px;font-weight:900
+  }
+
+  /* entrance animations */
+  .scene.active .a1{animation:fadeUp .55s both}
+  .scene.active .a2{animation:fadeUp .55s .18s both}
+  .scene.active .a3{animation:fadeUp .55s .36s both}
+  .scene.active .a4{animation:fadeUp .55s .54s both}
+  .scene.active .pop{animation:pop .45s .15s both}
+  .scene.active .pulse{animation:pulse 1.1s ease-in-out infinite alternate}
+  .scene.active .glow{animation:glow 1.4s ease-in-out infinite alternate}
+  .scene.active .scan:after{
+    content:"";position:absolute;left:-30%;top:0;width:28%;height:100%;
+    background:linear-gradient(90deg,transparent,rgba(66,232,255,.16),transparent);
+    animation:scan 1.8s linear infinite;
+  }
+  @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+  @keyframes pop{0%{opacity:0;transform:scale(.7)}75%{transform:scale(1.04)}100%{opacity:1;transform:scale(1)}}
+  @keyframes pulse{from{opacity:.55}to{opacity:1}}
+  @keyframes glow{from{text-shadow:0 0 0 transparent}to{text-shadow:0 0 24px currentColor}}
+  @keyframes scan{to{left:110%}}
+
+  .controls{
+    width:270px;padding:16px;border:1px solid rgba(255,255,255,.10);border-radius:18px;
+    background:#071018;color:#dff6ff;
+  }
+  .controls h3{margin-bottom:12px}
+  .controls .time{font-variant-numeric:tabular-nums;font-size:24px;font-weight:900;margin:12px 0 14px}
+  button,select{
+    appearance:none;border:1px solid rgba(255,255,255,.12);background:#0c1a25;color:#e8f8ff;
+    border-radius:11px;padding:10px 12px;font-weight:800;cursor:pointer
+  }
+  button:hover{border-color:rgba(66,232,255,.42)}
+  .buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .buttons button:first-child{grid-column:1/-1}
+  .timeline{margin-top:14px;display:grid;gap:6px;max-height:330px;overflow:auto;padding-right:4px}
+  .tl{
+    display:grid;grid-template-columns:28px 1fr 34px;gap:7px;align-items:center;
+    font-size:11px;color:var(--muted);padding:7px;border-radius:9px;cursor:pointer
+  }
+  .tl.active{background:rgba(66,232,255,.08);color:#eaffff}
+  .tl b{color:var(--cyan)}
+  .hint{font-size:11px;line-height:1.45;color:var(--muted);margin-top:12px}
+  @media (max-width:760px){
+    body{overflow:auto}
+    .app{flex-direction:column;padding:10px}
+    .phone{width:min(94vw,430px)}
+    .controls{width:min(94vw,430px)}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <main class="phone" id="video">
+    <div class="grain"></div>
+
+    <section class="scene active" data-duration="7" data-sub="AI bây giờ có thể viết code nhanh hơn bạn rất nhiều. Nhưng có một kỹ năng nó vẫn chưa thể làm thay bạn: hiểu toàn bộ hệ thống.">
+      <div class="center full">
+        <div style="width:100%">
+          <div class="kicker a1">The skill that survives AI</div>
+          <div class="hero-equation">
+            <div class="big cyan a2 glow">AI CODING</div>
+            <div class="a3" style="font-size:28px;color:var(--muted)">≠</div>
+            <div class="big yellow a4">SYSTEM<br>THINKING</div>
+          </div>
+          <div class="pill a4" style="margin-top:28px">AI tăng tốc implementation — không thay thế understanding.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" data-duration="9" data-sub="Vấn đề không phải code AI tạo ra có chạy hay không. Vấn đề là bạn có hiểu tại sao nó chạy hay không. Càng accept code mà không hiểu, bạn càng tích lũy comprehension debt.">
+      <div class="kicker a1">01 — Comprehension debt</div>
+      <h2 class="a2">Code chạy được<br><span class="muted">chưa chắc bạn hiểu nó.</span></h2>
+      <div class="codebox a3">
+        <div class="codehead"><i></i><i></i><i></i></div>
+        <div class="code">const result = await agent.build({
+  feature: "checkout",
+  auth: true,
+  retry: "auto",
+  cache: "smart"
+});
+
+// ✓ it works
+// ? do you know why?</div>
+      </div>
+      <div class="meter a4">
+        <div class="row" style="justify-content:space-between"><span>UNDERSTANDING</span><b class="red">22%</b></div>
+        <div class="meterline meter-under"><i></i></div>
+      </div>
+      <div class="meter a4">
+        <div class="row" style="justify-content:space-between"><span>COMPREHENSION DEBT</span><b class="yellow">87%</b></div>
+        <div class="meterline meter-debt"><i></i></div>
+      </div>
+    </section>
+
+    <section class="scene" data-duration="9" data-sub="Compiler hoạt động theo logic xác định. Nhưng LLM là probabilistic: cùng một prompt có thể tạo ra nhiều cách implement khác nhau, và cách trông hợp lý nhất chưa chắc đã đúng.">
+      <div class="kicker a1">02 — deterministic vs probabilistic</div>
+      <h2 class="a2">Compiler khác LLM<br><span class="muted">ở điểm cốt lõi.</span></h2>
+      <div class="compare">
+        <div class="card a3">
+          <h3>COMPILER</h3>
+          <div class="flow">
+            <div class="node cyan">INPUT</div><div class="arrow">↓</div>
+            <div class="node">RULES</div><div class="arrow">↓</div>
+            <div class="node green">OUTPUT</div>
+          </div>
+        </div>
+        <div class="card a4">
+          <h3>LLM</h3>
+          <div class="flow">
+            <div class="node yellow">PROMPT</div><div class="arrow">↓</div>
+            <div class="node">MODEL</div>
+            <div class="branches">
+              <div class="branch">A</div><div class="branch">B</div><div class="branch">C</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card a4 center" style="margin-top:14px;padding:13px">
+        <b class="red">PLAUSIBLE ≠ CORRECT</b>
+      </div>
+    </section>
+
+    <section class="scene" data-duration="8" data-sub="Công việc của developer đang dịch lên một tầng. AI có thể chơi từng nhạc cụ, nhưng bạn vẫn phải là người chỉ huy cả dàn nhạc.">
+      <div class="kicker a1">03 — systems thinking</div>
+      <h2 class="a2">AI chơi từng “nhạc cụ”.<br><span class="yellow">Bạn chỉ huy cả hệ thống.</span></h2>
+      <div class="arch a3">
+        <svg viewBox="0 0 340 360" preserveAspectRatio="none">
+          <path d="M80 40 Q170 120 170 180"/>
+          <path d="M260 45 Q170 120 170 180"/>
+          <path d="M65 295 Q150 250 170 180"/>
+          <path d="M275 295 Q200 250 170 180"/>
+          <path d="M170 330 Q170 250 170 180"/>
+        </svg>
+        <div class="n" style="left:3%;top:4%">FRONTEND</div>
+        <div class="n" style="right:2%;top:6%">AUTH</div>
+        <div class="n" style="left:0;bottom:12%">API</div>
+        <div class="n" style="right:0;bottom:12%">QUEUE</div>
+        <div class="n" style="left:50%;bottom:0;transform:translateX(-50%)">DATABASE</div>
+        <div class="you pop">YOU<br><span class="yellow">CONDUCT</span></div>
+      </div>
+    </section>
+
+    <section class="scene" data-duration="10" data-sub="Có ba câu hỏi bạn nên trả lời được với bất kỳ hệ thống nào: State nằm ở đâu? Feedback nằm ở đâu? Và nếu tôi xóa phần này, thứ gì sẽ vỡ?">
+      <div class="kicker a1">04 — 3 questions</div>
+      <h2 class="a2">Muốn biết bạn có<br>thực sự hiểu hệ thống?</h2>
+      <div class="qcards">
+        <div class="qcard a2">
+          <div class="num">01</div><div><b>STATE</b><div class="muted">Who owns the source of truth?</div></div>
+        </div>
+        <div class="qcard a3">
+          <div class="num">02</div><div><b>FEEDBACK</b><div class="muted">Logs · Metrics · Errors?</div></div>
+        </div>
+        <div class="qcard a4">
+          <div class="num">03</div><div><b>DELETE</b><div class="muted">What breaks if this disappears?</div></div>
+        </div>
+      </div>
+      <div class="pill a4" style="margin-top:18px">Không trả lời được → chưa hiểu blast radius.</div>
+    </section>
+
+    <section class="scene" data-duration="11" data-sub="Trong video, tác giả kể về một app được tạo bằng Lovable. App đã có khách hàng trả tiền, nhưng bên trong có file khoảng 7.000 dòng, gần như không log, không rate limiting và error handling yếu.">
+      <div class="kicker a1">05 — Lovable case</div>
+      <h2 class="a2">UI đẹp. App chạy.<br><span class="red">Architecture thì vỡ.</span></h2>
+      <div class="appmock a2 scan" style="position:relative;overflow:hidden">
+        <div class="screen">APP WORKS ✓</div>
+      </div>
+      <div class="row a3" style="justify-content:space-between;margin-top:18px">
+        <div><div class="muted" style="font-size:11px">ONE FILE</div><div class="bigstat">~7K</div></div>
+        <div style="text-align:right"><div class="muted" style="font-size:11px">LINES OF CODE</div><b class="yellow">according to video</b></div>
+      </div>
+      <div class="warns a4">
+        <div class="warn">NO LOGS</div>
+        <div class="warn">NO RATE LIMIT</div>
+        <div class="warn">WEAK ERROR HANDLING</div>
+        <div class="warn">STATE EVERYWHERE</div>
+      </div>
+      <div class="card center a4" style="margin-top:12px;padding:12px">
+        <b>PARTS WORK <span class="muted">→</span> <span class="red">SYSTEM DOESN'T</span></b>
+      </div>
+    </section>
+
+    <section class="scene" data-duration="10" data-sub="Làm sao rèn systems thinking khi AI đang làm phần lớn việc coding? Thiết kế trước khi prompt, viết spec, chạy deletion test và luôn chất vấn code AI tạo ra.">
+      <div class="kicker a1">06 — train the skill</div>
+      <h2 class="a2">Đừng prompt trước.<br><span class="cyan">Hãy design trước.</span></h2>
+      <div class="pipeline">
+        <div class="step a2"><i>01</i><b>DESIGN</b></div>
+        <div class="step a2"><i>02</i><b>SPEC</b></div>
+        <div class="step a3"><i>03</i><b>BUILD WITH AI</b></div>
+        <div class="step a3"><i>04</i><b>QUESTION + REVIEW</b></div>
+        <div class="step a4"><i>05</i><b>DELETE TEST</b></div>
+      </div>
+      <div class="pill a4" style="margin-top:15px">What · Why · Constraints · Success · Failure modes</div>
+    </section>
+
+    <section class="scene" data-duration="8" data-sub="Trong thời đại AI, lợi thế của developer không chỉ là viết code nhanh hơn. Mà là nhìn vào một hệ thống và nhận ra AI đang sai ở đâu.">
+      <div class="kicker a1">07 — career shift</div>
+      <h2 class="a2">Lợi thế mới không phải<br><span class="cyan">MORE CODE.</span></h2>
+      <div class="speed">
+        <div class="bars a3">
+          <div class="bar code"><span>AI CODE</span><i></i></div>
+          <div class="bar judgment"><span>JUDGMENT</span><i></i></div>
+        </div>
+        <div class="divider a3"></div>
+        <div class="center a4">
+          <div class="kicker">Developer advantage</div>
+          <div style="font-size:42px;font-weight:950;line-height:.95;letter-spacing:-.045em" class="yellow">BETTER<br>JUDGMENT</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" data-duration="8" data-sub="AI có thể giúp bạn implementation nhanh hơn rất nhiều. Nhưng architecture, state, dependency và failure vẫn cần một người hiểu chúng. Trước prompt tiếp theo, hãy thử vẽ hệ thống của bạn trước.">
+      <div class="kicker a1">08 — conclusion</div>
+      <h2 class="a2">Trước prompt tiếp theo…<br><span class="green">hãy vẽ hệ thống trước.</span></h2>
+      <div class="final-diagram a3">
+        <svg viewBox="0 0 340 300" preserveAspectRatio="none">
+          <path d="M80 58 L170 58 L170 145"/>
+          <path d="M260 58 L170 58"/>
+          <path d="M170 145 L85 235"/>
+          <path d="M170 145 L255 235"/>
+        </svg>
+        <div class="box" style="left:2%;top:5%">CLIENT</div>
+        <div class="box" style="right:2%;top:5%">AUTH</div>
+        <div class="box" style="left:50%;top:42%;transform:translate(-50%,-50%)">API</div>
+        <div class="box" style="left:1%;bottom:3%">QUEUE</div>
+        <div class="box" style="right:1%;bottom:3%">DATABASE</div>
+      </div>
+      <div class="center a4" style="margin-top:10px">
+        <div style="font-size:36px;font-weight:950;letter-spacing:-.045em"><span class="green">DESIGN</span> → THEN PROMPT</div>
+        <div class="muted" style="font-size:12px;margin-top:10px">Systems Thinking &gt; Blind Coding</div>
+      </div>
+    </section>
+
+    <div class="hud">
+      <div class="topbar"><span><i class="dot"></i>TECH EXPLAINER</span><span id="sceneLabel">01 / 09</span></div>
+      <div class="subtitle" id="subtitle"></div>
+      <div class="progress"><i id="progress"></i></div>
+    </div>
+  </main>
+
+  <aside class="controls">
+    <h3>Video Controls</h3>
+    <div class="muted" style="font-size:12px">9:16 · 80 seconds · HTML/CSS/JS</div>
+    <div class="time"><span id="now">00:00.0</span> <span class="muted" style="font-size:13px">/ 01:20.0</span></div>
+    <div class="buttons">
+      <button id="play">▶ Play</button>
+      <button id="restart">↺ Restart</button>
+      <button id="full">⛶ Fullscreen</button>
+    </div>
+    <div class="timeline" id="timeline"></div>
+    <div class="hint">
+      Tip: mở fullscreen rồi quay màn hình ở 1080×1920. Bạn có thể sửa text, thời lượng từng scene và màu trực tiếp trong file HTML.
+    </div>
+  </aside>
+</div>
+
+<script>
+const scenes = [...document.querySelectorAll('.scene')];
+const durations = scenes.map(s=>Number(s.dataset.duration));
+const total = durations.reduce((a,b)=>a+b,0);
+const starts = durations.map((_,i)=>durations.slice(0,i).reduce((a,b)=>a+b,0));
+
+const playBtn = document.getElementById('play');
+const restartBtn = document.getElementById('restart');
+const fullBtn = document.getElementById('full');
+const progress = document.getElementById('progress');
+const subtitle = document.getElementById('subtitle');
+const nowEl = document.getElementById('now');
+const label = document.getElementById('sceneLabel');
+const timeline = document.getElementById('timeline');
+
+let playing = false;
+let currentTime = 0;
+let lastTs = null;
+let raf = null;
+let activeIndex = -1;
+
+function fmt(t){
+  const m = Math.floor(t/60);
+  const s = Math.floor(t%60);
+  const d = Math.floor((t%1)*10);
+  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+d;
+}
+function sceneAt(t){
+  for(let i=scenes.length-1;i>=0;i--) if(t>=starts[i]) return i;
+  return 0;
+}
+function activate(i){
+  if(i===activeIndex) return;
+  activeIndex=i;
+  scenes.forEach((s,idx)=>{
+    s.classList.toggle('active',idx===i);
+    if(idx!==i){
+      // restart CSS animations on next entry
+      const clone = s.cloneNode(true);
+      s.replaceWith(clone);
+      scenes[idx] = clone;
+    }
+  });
+  label.textContent = String(i+1).padStart(2,'0')+' / '+String(scenes.length).padStart(2,'0');
+  [...timeline.children].forEach((el,idx)=>el.classList.toggle('active',idx===i));
+}
+function render(){
+  currentTime = Math.max(0,Math.min(total,currentTime));
+  const i = sceneAt(Math.min(currentTime,total-.001));
+  activate(i);
+  subtitle.textContent = scenes[i].dataset.sub || '';
+  progress.style.width = (currentTime/total*100)+'%';
+  nowEl.textContent = fmt(currentTime);
+}
+function tick(ts){
+  if(!playing) return;
+  if(lastTs==null) lastTs=ts;
+  const dt=(ts-lastTs)/1000;
+  lastTs=ts;
+  currentTime += dt;
+  if(currentTime>=total){
+    currentTime=total;
+    playing=false;
+    playBtn.textContent='▶ Play';
+    render();
+    return;
+  }
+  render();
+  raf=requestAnimationFrame(tick);
+}
+function playPause(){
+  playing=!playing;
+  playBtn.textContent=playing?'❚❚ Pause':'▶ Play';
+  lastTs=null;
+  if(playing){
+    if(currentTime>=total) currentTime=0;
+    raf=requestAnimationFrame(tick);
+  }else if(raf){
+    cancelAnimationFrame(raf);
+  }
+}
+playBtn.onclick=playPause;
+restartBtn.onclick=()=>{
+  playing=false; playBtn.textContent='▶ Play';
+  if(raf) cancelAnimationFrame(raf);
+  currentTime=0; lastTs=null; activeIndex=-1; render();
+};
+fullBtn.onclick=()=>{
+  const el=document.getElementById('video');
+  if(!document.fullscreenElement) el.requestFullscreen?.();
+  else document.exitFullscreen?.();
+};
+
+durations.forEach((d,i)=>{
+  const el=document.createElement('div');
+  el.className='tl';
+  el.innerHTML=`<b>${String(i+1).padStart(2,'0')}</b><span>${[
+    'Hook','Comprehension debt','Compiler vs LLM','Systems thinking',
+    '3 questions','Lovable case','Training','Career shift','Conclusion'
+  ][i]}</span><span>${d}s</span>`;
+  el.onclick=()=>{currentTime=starts[i];activeIndex=-1;render();};
+  timeline.appendChild(el);
+});
+
+render();
+</script>
+</body>
+</html>

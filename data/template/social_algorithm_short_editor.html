@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Social Algorithm Short Video Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#080b12;--panel:#101521;--muted:#8f9bb3;--line:#252d3d;--cyan:#64e7ff;--yellow:#ffd54a;--green:#67f5a5;--red:#ff6b7a;--white:#f7f9ff}
+  *{box-sizing:border-box} body{margin:0;background:linear-gradient(135deg,#080b12,#0d1220 55%,#080b12);color:var(--white);font-family:"Be Vietnam Pro",Inter,system-ui,sans-serif;min-height:100vh}
+  .app{display:grid;grid-template-columns:minmax(330px,440px) minmax(560px,1fr);gap:24px;padding:24px;max-width:1400px;margin:auto}
+  .left,.right{background:rgba(16,21,33,.92);border:1px solid var(--line);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.28)}
+  .left{padding:18px;max-height:calc(100vh - 48px);overflow:auto}.right{padding:18px;display:flex;flex-direction:column;align-items:center;gap:16px}
+  h1{font-size:20px;margin:0 0 5px} .sub{font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:16px}
+  .scene{border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0;background:#0c111c}.scene.active{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(100,231,255,.2)}
+  .scene-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}.scene-title{font-weight:700;font-size:13px}.time{font-size:11px;color:var(--cyan);font-variant-numeric:tabular-nums}
+  label{font-size:11px;color:var(--muted)} input[type=number],textarea{width:100%;background:#080d16;color:var(--white);border:1px solid #263044;border-radius:9px;padding:8px;font:inherit;font-size:12px;outline:none}textarea{resize:vertical;min-height:58px;margin-top:5px}
+  input[type=number]{width:82px}.row{display:flex;align-items:center;gap:10px;justify-content:space-between}
+  .canvas-wrap{position:relative;width:min(46vh,405px);aspect-ratio:9/16;border-radius:18px;overflow:hidden;border:1px solid #2c3549;background:#05070b;box-shadow:0 18px 60px rgba(0,0,0,.5)}canvas{width:100%;height:100%;display:block}
+  .controls{width:min(700px,100%);display:grid;gap:10px}.buttons{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}button{appearance:none;border:1px solid #2a354a;background:#151c2a;color:var(--white);padding:9px 13px;border-radius:10px;font:600 12px inherit;cursor:pointer}button:hover{border-color:#4c5d7d}button.primary{background:linear-gradient(135deg,#28cfe8,#6b8cff);border:none;color:#061018}button.export{background:linear-gradient(135deg,#ffd54a,#ff9f43);border:none;color:#1a1100}button:disabled{opacity:.45;cursor:not-allowed}
+  .scrub{display:grid;grid-template-columns:58px 1fr 58px;gap:8px;align-items:center;font-size:11px;color:var(--muted)}input[type=range]{width:100%}
+  .audio{width:min(700px,100%);border:1px dashed #334057;border-radius:12px;padding:10px;font-size:11px;color:var(--muted);display:flex;gap:10px;align-items:center;justify-content:space-between}.audio input{max-width:280px}
+  .status{font-size:11px;color:var(--muted);text-align:center;min-height:18px}.legend{font-size:10px;color:#6f7a91;line-height:1.6;text-align:center}
+  @media(max-width:950px){.app{grid-template-columns:1fr}.left{max-height:none;order:2}.right{order:1}.canvas-wrap{width:min(72vw,405px)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="left">
+    <h1>Social Algorithm — Short Editor</h1>
+    <div class="sub">Video dọc 9:16 • ~64s mặc định • Font Be Vietnam Pro • Sửa duration từng màn để tự căn nhịp. Các thay đổi text/duration được áp dụng ngay khi preview.</div>
+    <div id="sceneList"></div>
+  </section>
+  <section class="right">
+    <div class="canvas-wrap"><canvas id="c" width="540" height="960"></canvas></div>
+    <div class="controls">
+      <div class="buttons">
+        <button id="prev">◀ Màn trước</button>
+        <button id="play" class="primary">▶ Preview</button>
+        <button id="next">Màn sau ▶</button>
+        <button id="reset">↺ Reset</button>
+        <button id="webm">Download WebM</button>
+        <button id="mp4" class="export">Download MP4</button>
+      </div>
+      <div class="scrub"><span id="now">00:00</span><input id="seek" type="range" min="0" max="64" step="0.01" value="0"><span id="total">01:04</span></div>
+    </div>
+    <div class="audio">
+      <div><b>Voice-over (tùy chọn)</b><br>Upload MP3/WAV. Khi export, audio sẽ được trộn vào video.</div>
+      <input id="audioFile" type="file" accept="audio/*">
+    </div>
+    <div class="status" id="status">Sẵn sàng.</div>
+    <div class="legend">MP4 dùng ffmpeg.wasm nên lần đầu có thể cần tải thư viện qua Internet. Nếu trình duyệt chặn, hãy dùng WebM hoặc mở file bằng Chrome/Edge.</div>
+  </section>
+</div>
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+<script>
+const baseScenes = [
+ {title:'HOOK',duration:4,text:'THUẬT TOÁN MẠNG XÃ HỘI\nHOẠT ĐỘNG RA SAO?',type:'hook'},
+ {title:'FIRST TEST',duration:10,text:'Khi bạn đăng video...\nNó được TEST trước với khoảng\n~200 NGƯỜI XEM',type:'first'},
+ {title:'SIGNALS',duration:8,text:'THUẬT TOÁN QUAN SÁT\nWatch time • Like • Comment\nSave • Share',type:'signals'},
+ {title:'SCALE UP',duration:10,text:'KẾT QUẢ TỐT?\n200 → 2K → 20K → 200K',type:'ladder'},
+ {title:'STOP',duration:8,text:'LƯỚT QUA QUÁ NHANH?\nLOW ENGAGEMENT\n= STOP DISTRIBUTION',type:'stop'},
+ {title:'GOAL',duration:8,text:'MỤC TIÊU CỦA THUẬT TOÁN\nGIỮ NGƯỜI DÙNG Ở LẠI\nCÀNG LÂU CÀNG TỐT',type:'goal'},
+ {title:'NICHE',duration:8,text:'GIÚP THUẬT TOÁN HIỂU\nBẠN ĐANG NÓI CHO AI\nĐừng đăng quá nhiều chủ đề',type:'niche'},
+ {title:'FORMULA',duration:8,text:'Relevant • Non-obvious\nEasy • Actionable\nĐÚNG NGƯỜI + NỘI DUNG TỐT',type:'formula'}
+];
+let scenes=JSON.parse(JSON.stringify(baseScenes));
+const c=document.getElementById('c'),ctx=c.getContext('2d'); const W=c.width,H=c.height;
+let t=0,playing=false,last=0,audioEl=null,audioUrl=null;
+const $=id=>document.getElementById(id);
+function totalDur(){return scenes.reduce((a,s)=>a+Math.max(.2,+s.duration||0),0)}
+function fmt(x){x=Math.max(0,x);let m=Math.floor(x/60),s=Math.floor(x%60);return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')}
+function bounds(){let acc=0;return scenes.map((s,i)=>{let a=acc,b=acc+(+s.duration||0);acc=b;return {i,a,b}})}
+function sceneAt(time){const b=bounds();return b.find(x=>time>=x.a&&time<x.b)||b[b.length-1]}
+function easeOut(x){return 1-Math.pow(1-Math.min(1,Math.max(0,x)),3)} function clamp(x,a=0,b=1){return Math.max(a,Math.min(b,x))}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r)}
+function textLines(text){return text.split('\n')}
+function fitLine(line,maxW,maxSize=52,minSize=20,weight=800){let s=maxSize;ctx.font=`${weight} ${s}px "Be Vietnam Pro",sans-serif`;while(ctx.measureText(line).width>maxW&&s>minSize){s-=1;ctx.font=`${weight} ${s}px "Be Vietnam Pro",sans-serif`}return s}
+function drawTextBlock(lines,y,opts={}){const gap=opts.gap||12;let yy=y;for(let i=0;i<lines.length;i++){let l=lines[i],color=opts.colors?.[i]||'#f7f9ff',weight=opts.weights?.[i]||800,size=fitLine(l,460,opts.maxSize||50,22,weight);ctx.font=`${weight} ${size}px "Be Vietnam Pro",sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=color;ctx.fillText(l,W/2,yy);yy+=size+gap}}
+function bg(progress,accent='#64e7ff'){ctx.fillStyle='#070a11';ctx.fillRect(0,0,W,H);let g=ctx.createRadialGradient(W*.15,H*.15,20,W*.15,H*.15,450);g.addColorStop(0,accent+'24');g.addColorStop(1,'#00000000');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.strokeStyle='#ffffff09';ctx.lineWidth=1;for(let y=110;y<H;y+=70){ctx.beginPath();ctx.moveTo(28,y);ctx.lineTo(W-28,y);ctx.stroke()}for(let x=48;x<W;x+=74){ctx.beginPath();ctx.moveTo(x,100);ctx.lineTo(x,H-50);ctx.stroke()}ctx.fillStyle='#8792a8';ctx.font='600 17px "Be Vietnam Pro"';ctx.textAlign='left';ctx.fillText('SOCIAL ALGORITHM',28,48);ctx.textAlign='right';ctx.fillText('9:16',W-28,48)}
+function pill(x,y,w,label,color='#64e7ff'){ctx.fillStyle=color+'20';ctx.strokeStyle=color+'70';ctx.lineWidth=2;rr(x,y,w,46,23);ctx.fill();ctx.stroke();ctx.fillStyle=color;ctx.font='700 19px "Be Vietnam Pro"';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,x+w/2,y+23)}
+function drawScene(sc,p){ctx.clearRect(0,0,W,H);const local=clamp(p);const intro=easeOut(clamp(local/.18));
+ if(sc.type==='hook'){bg(local,'#64e7ff');ctx.save();ctx.globalAlpha=intro;ctx.translate(0,(1-intro)*26);pill(145,155,250,'OPEN LOOP','#ffd54a');drawTextBlock(textLines(sc.text),310,{colors:['#f7f9ff','#64e7ff'],maxSize:53,gap:22});ctx.fillStyle='#8f9bb3';ctx.font='500 20px "Be Vietnam Pro"';ctx.textAlign='center';ctx.fillText('Không phải “hack”. Là cách phân phối nội dung.',W/2,640);ctx.restore();}
+ if(sc.type==='first'){bg(local,'#ffd54a');ctx.globalAlpha=intro;drawTextBlock(['KHI BẠN ĐĂNG VIDEO…'],175,{maxSize:37});ctx.globalAlpha=1;let pop=easeOut(clamp((local-.18)/.22));ctx.save();ctx.translate(W/2,430);ctx.scale(.72+.28*pop,.72+.28*pop);ctx.fillStyle='#ffd54a';ctx.font='800 150px "Be Vietnam Pro"';ctx.textAlign='center';ctx.fillText('200',0,0);ctx.restore();pill(125,525,290,'FIRST TEST','#ffd54a');ctx.fillStyle='#f7f9ff';ctx.font='700 31px "Be Vietnam Pro"';ctx.textAlign='center';ctx.fillText('phần lớn có thể là',W/2,650);ctx.fillStyle='#64e7ff';ctx.font='800 39px "Be Vietnam Pro"';ctx.fillText('NON-FOLLOWERS',W/2,705);ctx.fillStyle='#7b8498';ctx.font='500 15px "Be Vietnam Pro"';ctx.fillText('* Mô hình minh họa theo video gốc',W/2,850)}
+ if(sc.type==='signals'){bg(local,'#67f5a5');drawTextBlock(['THUẬT TOÁN','QUAN SÁT TÍN HIỆU'],160,{colors:['#f7f9ff','#67f5a5'],maxSize:44});const labs=[['⏱','WATCH TIME'],['♥','LIKE'],['💬','COMMENT'],['↗','SHARE']];labs.forEach((a,i)=>{let q=easeOut(clamp((local-i*.08)/.2));let y=330+i*105;ctx.globalAlpha=q;ctx.fillStyle='#111827';rr(55,y,430,78,18);ctx.fill();ctx.strokeStyle='#2f3c51';ctx.stroke();ctx.fillStyle=i===0?'#67f5a5':'#f7f9ff';ctx.font='700 29px "Be Vietnam Pro"';ctx.textAlign='left';ctx.fillText(a[0],80,y+50);ctx.font='700 24px "Be Vietnam Pro"';ctx.fillText(a[1],145,y+49);ctx.fillStyle='#273347';rr(330,y+30,120,16,8);ctx.fill();ctx.fillStyle='#67f5a5';rr(330,y+30,120*q,16,8);ctx.fill()});ctx.globalAlpha=1}
+ if(sc.type==='ladder'){bg(local,'#64e7ff');drawTextBlock(['KẾT QUẢ TỐT?','PHÂN PHỐI MỞ RỘNG'],150,{colors:['#f7f9ff','#64e7ff'],maxSize:42});const vals=['200','2K','20K','200K'];vals.forEach((v,i)=>{let q=easeOut(clamp((local-i*.17)/.18));let y=330+i*120;ctx.globalAlpha=.3+.7*q;ctx.fillStyle=i===vals.length-1?'#ffd54a':'#64e7ff';ctx.font=`800 ${i===3?62:54}px "Be Vietnam Pro"`;ctx.textAlign='center';ctx.fillText(v,W/2,y);if(i<3){ctx.strokeStyle='#ffffff55';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(W/2,y+34);ctx.lineTo(W/2,y+80);ctx.stroke();ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(W/2-9,y+72);ctx.lineTo(W/2+9,y+72);ctx.lineTo(W/2,y+84);ctx.fill()}});ctx.globalAlpha=1;ctx.fillStyle='#8f9bb3';ctx.font='500 15px "Be Vietnam Pro"';ctx.fillText('Illustrative distribution ladder',W/2,860)}
+ if(sc.type==='stop'){bg(local,'#ff6b7a');let q=easeOut(clamp(local/.2));ctx.globalAlpha=q;drawTextBlock(['200 NGƯỜI ĐẦU','LƯỚT QUA QUÁ NHANH?'],180,{colors:['#f7f9ff','#ff6b7a'],maxSize:43});ctx.fillStyle='#ff6b7a';rr(65,430,410,130,24);ctx.fill();ctx.fillStyle='#16090d';ctx.font='800 48px "Be Vietnam Pro"';ctx.textAlign='center';ctx.fillText('STOP',W/2,490);ctx.font='800 26px "Be Vietnam Pro"';ctx.fillText('DISTRIBUTION',W/2,530);ctx.fillStyle='#9aa4b8';ctx.font='600 20px "Be Vietnam Pro"';ctx.fillText('LOW ENGAGEMENT',W/2,670);ctx.globalAlpha=1}
+ if(sc.type==='goal'){bg(local,'#ffd54a');drawTextBlock(['THUẬT TOÁN MUỐN GÌ?'],160,{maxSize:42});let q=easeOut(clamp((local-.12)/.25));ctx.fillStyle='#121827';rr(45,330,450,240,28);ctx.fill();ctx.strokeStyle='#ffd54a80';ctx.lineWidth=3;ctx.stroke();ctx.fillStyle='#ffd54a';ctx.font='800 95px "Be Vietnam Pro"';ctx.textAlign='center';ctx.fillText(Math.floor(12+q*48)+'m',W/2,440);ctx.fillStyle='#f7f9ff';ctx.font='700 27px "Be Vietnam Pro"';ctx.fillText('TIME ON PLATFORM',W/2,500);drawTextBlock(['GIỮ NGƯỜI DÙNG Ở LẠI','CÀNG LÂU CÀNG TỐT'],690,{colors:['#f7f9ff','#ffd54a'],maxSize:34})}
+ if(sc.type==='niche'){bg(local,'#64e7ff');drawTextBlock(['GIÚP THUẬT TOÁN HIỂU','BẠN ĐANG NÓI CHO AI'],130,{colors:['#f7f9ff','#64e7ff'],maxSize:40});const items=[['😂','HÀI HƯỚC'],['⚽','THỂ THAO'],['📚','GIÁO DỤC']];items.forEach((a,i)=>{let x=62+i*150;ctx.fillStyle='#121827';rr(x,340,116,120,20);ctx.fill();ctx.fillStyle='#ff6b7a';ctx.font='800 25px "Be Vietnam Pro"';ctx.textAlign='center';ctx.fillText('×',x+58,370);ctx.fillStyle='#fff';ctx.font='34px sans-serif';ctx.fillText(a[0],x+58,414);ctx.font='700 13px "Be Vietnam Pro"';ctx.fillText(a[1],x+58,448)});ctx.strokeStyle='#ffffff45';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(270,485);ctx.lineTo(270,560);ctx.stroke();ctx.fillStyle='#67f5a5';rr(105,590,330,120,24);ctx.fill();ctx.fillStyle='#052516';ctx.font='800 24px "Be Vietnam Pro"';ctx.fillText('✓ MỘT NICHE RÕ RÀNG',W/2,645);ctx.font='700 17px "Be Vietnam Pro"';ctx.fillText('→ dữ liệu audience sạch hơn',W/2,680)}
+ if(sc.type==='formula'){bg(local,'#67f5a5');drawTextBlock(['NỘI DUNG TỐT ='],120,{maxSize:40});const labels=[['RELEVANT','#64e7ff'],['NON-OBVIOUS','#ffd54a'],['EASY','#67f5a5'],['ACTIONABLE','#f7f9ff']];labels.forEach((a,i)=>{let q=easeOut(clamp((local-i*.08)/.18));ctx.globalAlpha=q;pill(90,250+i*95,360,a[0],a[1])});ctx.globalAlpha=1;ctx.fillStyle='#f7f9ff';ctx.font='800 33px "Be Vietnam Pro"';ctx.textAlign='center';ctx.fillText('ĐÚNG NGƯỜI',W/2,700);ctx.fillStyle='#8f9bb3';ctx.font='800 24px "Be Vietnam Pro"';ctx.fillText('+',W/2,744);ctx.fillStyle='#67f5a5';ctx.font='800 33px "Be Vietnam Pro"';ctx.fillText('NỘI DUNG TỐT',W/2,790);ctx.fillStyle='#f7f9ff';ctx.font='700 19px "Be Vietnam Pro"';ctx.fillText('→ thuật toán có lý do để phân phối tiếp',W/2,850)}
+}
+function render(){let b=sceneAt(t),sc=scenes[b.i],p=(t-b.a)/(b.b-b.a||1);drawScene(sc,p);$('now').textContent=fmt(t);$('total').textContent=fmt(totalDur());$('seek').max=totalDur();$('seek').value=t;document.querySelectorAll('.scene').forEach((e,i)=>e.classList.toggle('active',i===b.i));}
+function rebuild(){const list=$('sceneList');list.innerHTML='';let bs=bounds();scenes.forEach((s,i)=>{let d=document.createElement('div');d.className='scene';d.innerHTML=`<div class="scene-head"><div class="scene-title">${i+1}. ${s.title}</div><div class="time">${fmt(bs[i].a)} → ${fmt(bs[i].b)}</div></div><div class="row"><label>Duration (giây)</label><input type="number" min="0.5" step="0.5" value="${s.duration}" data-dur="${i}"></div><label style="display:block;margin-top:8px">Text chính</label><textarea data-text="${i}">${s.text}</textarea>`;list.appendChild(d)});list.querySelectorAll('[data-dur]').forEach(el=>el.oninput=e=>{scenes[+e.target.dataset.dur].duration=Math.max(.5,+e.target.value||.5);t=Math.min(t,totalDur()-.001);rebuild();render()});list.querySelectorAll('[data-text]').forEach(el=>el.oninput=e=>{scenes[+e.target.dataset.text].text=e.target.value;render()});render()}
+function tick(ts){if(playing){if(!last)last=ts;let dt=(ts-last)/1000;last=ts;t+=dt;if(t>=totalDur()){playing=false;t=totalDur()-.001;$('play').textContent='▶ Preview'; if(audioEl)audioEl.pause()}render()}requestAnimationFrame(tick)}requestAnimationFrame(tick);
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'❚❚ Pause':'▶ Preview';last=0;if(audioEl){audioEl.currentTime=t;if(playing)audioEl.play();else audioEl.pause()}};
+$('seek').oninput=e=>{t=+e.target.value;last=0;if(audioEl){audioEl.currentTime=t}render()};
+$('prev').onclick=()=>{let b=sceneAt(t),bb=bounds();t=bb[Math.max(0,b.i-1)].a;render()};$('next').onclick=()=>{let b=sceneAt(t),bb=bounds();t=bb[Math.min(bb.length-1,b.i+1)].a;render()};
+$('reset').onclick=()=>{scenes=JSON.parse(JSON.stringify(baseScenes));t=0;rebuild()};
+$('audioFile').onchange=e=>{if(audioUrl)URL.revokeObjectURL(audioUrl);let f=e.target.files[0];if(!f){audioEl=null;return}audioUrl=URL.createObjectURL(f);audioEl=new Audio(audioUrl);$('status').textContent='Đã nạp voice-over: '+f.name};
+async function recordWebM(){return new Promise(async(resolve,reject)=>{const fps=30;const stream=c.captureStream(fps);let ac=null,src=null,dest=null;if(audioEl){ac=new AudioContext();src=ac.createMediaElementSource(audioEl);dest=ac.createMediaStreamDestination();src.connect(dest);src.connect(ac.destination);dest.stream.getAudioTracks().forEach(tr=>stream.addTrack(tr));await ac.resume();}
+ let mime=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(x=>MediaRecorder.isTypeSupported(x))||'';let rec=new MediaRecorder(stream,mime?{mimeType:mime,videoBitsPerSecond:8000000}:undefined),chunks=[];rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};rec.onerror=reject;rec.onstop=()=>{if(ac)ac.close();resolve(new Blob(chunks,{type:'video/webm'}))};
+ const oldT=t,oldPlaying=playing;playing=false;t=0;last=0;if(audioEl){audioEl.currentTime=0;await audioEl.play().catch(()=>{})}$('status').textContent='Đang render video realtime…';rec.start(1000);const started=performance.now();function step(now){t=(now-started)/1000;render();if(t<totalDur()){requestAnimationFrame(step)}else{t=totalDur()-.001;render();if(audioEl)audioEl.pause();rec.stop();t=oldT;playing=oldPlaying;render()}}requestAnimationFrame(step)})}
+function downloadBlob(blob,name){let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
+$('webm').onclick=async()=>{try{$('webm').disabled=true;let b=await recordWebM();downloadBlob(b,'social_algorithm_short.webm');$('status').textContent='Đã xuất WebM.'}catch(e){$('status').textContent='Lỗi export: '+e.message}finally{$('webm').disabled=false}};
+$('mp4').onclick=async()=>{try{$('mp4').disabled=true;let webm=await recordWebM();$('status').textContent='Đang chuyển WebM → MP4…';if(!window.FFmpeg)throw new Error('Không tải được ffmpeg.wasm');const {createFFmpeg,fetchFile}=FFmpeg;const ffmpeg=createFFmpeg({log:false,corePath:'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js'});await ffmpeg.load();ffmpeg.FS('writeFile','in.webm',await fetchFile(webm));await ffmpeg.run('-i','in.webm','-c:v','libx264','-pix_fmt','yuv420p','-movflags','faststart','-preset','veryfast','-c:a','aac','-b:a','160k','out.mp4');const out=ffmpeg.FS('readFile','out.mp4');downloadBlob(new Blob([out.buffer],{type:'video/mp4'}),'social_algorithm_short.mp4');$('status').textContent='Đã xuất MP4.'}catch(e){$('status').textContent='MP4 lỗi: '+e.message+' — bạn vẫn có thể dùng nút WebM.'}finally{$('mp4').disabled=false}};
+rebuild();render();
+</script>
+</body>
+</html>
