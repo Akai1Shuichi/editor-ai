@@ -45,6 +45,15 @@ function createMcpServer() {
   const server = new McpServer({
     name: "youtube-html-editor",
     version: "0.1.0",
+    instructions: [
+      "When the user provides a YouTube URL, analyze the video yourself in the ChatGPT conversation.",
+      "This MCP server only stores projects and HTML. It does not download, scrape, or analyze YouTube videos.",
+      "When the user asks for an edit in HTML, create one complete self-contained responsive HTML document, including all required CSS and JavaScript.",
+      "The HTML is an edit mockup or plan, not a rendered MP4 video. It may show a 9:16 video frame, captions, shot list or timeline, effects, and a CTA.",
+      "Do not merely paste HTML code into the conversation. You must call save_edit_html with the full document for the correct project_id.",
+      "If the project_id is not known, call get_project or list_projects first.",
+      "Only tell the user that the edit is ready after save_edit_html succeeds.",
+    ].join("\n"),
   });
 
   server.registerTool("create_project", {
