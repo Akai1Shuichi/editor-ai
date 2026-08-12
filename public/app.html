@@ -670,6 +670,31 @@
         return project;
       }
 
+      async function applyOpenAppState(structuredContent) {
+        if (!structuredContent || typeof structuredContent !== "object") {
+          return;
+        }
+
+        const projects = Array.isArray(structuredContent.projects) ? structuredContent.projects : [];
+        const project = structuredContent.project ?? null;
+
+        renderProjectOptions(projects);
+
+        if (project) {
+          renderProject(project);
+          setStatus(actionStatus, `Đã mở app với project ${project.id}.`, "success");
+          return;
+        }
+
+        if (projects[0]) {
+          await loadProject(projects[0].id);
+          setStatus(actionStatus, `Đã mở app với project ${projects[0].id}.`, "success");
+          return;
+        }
+
+        setStatus(actionStatus, "App đã mở. Chưa có project nào.", "");
+      }
+
       async function pollProjectUntilReady(projectId, maxAttempts = 8, intervalMs = 2500) {
         stopPolling();
 
@@ -714,6 +739,22 @@
           { name: "youtube-html-editor-widget", version: "0.1.0" },
           { availableDisplayModes: ["inline", "fullscreen"] },
         );
+
+        app.ontoolresult = async (event) => {
+          if (event.toolName !== "open_app") {
+            return;
+          }
+
+          try {
+            await applyOpenAppState(event.result?.structuredContent);
+          } catch (error) {
+            setStatus(
+              actionStatus,
+              error instanceof Error ? error.message : "Không áp dụng được dữ liệu khởi tạo từ open_app.",
+              "error",
+            );
+          }
+        };
 
         app.onhostcontextchanged = () => {
           const hostContext = app.getHostContext();

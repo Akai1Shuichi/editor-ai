@@ -6,7 +6,11 @@ import { fileURLToPath } from "node:url";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { registerAppResource, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
+import {
+  registerAppResource,
+  registerAppTool,
+  RESOURCE_MIME_TYPE,
+} from "@modelcontextprotocol/ext-apps/server";
 import { z } from "zod";
 
 import {
@@ -35,6 +39,10 @@ const projectSchema = z.object({
   previewUrl: z.string().nullable(),
 });
 const projectsSchema = z.array(projectSchema);
+const openAppStateSchema = z.object({
+  project: projectSchema.nullable(),
+  projects: projectsSchema,
+});
 
 function htmlScriptSafeString(value) {
   return JSON.stringify(value).replace(/<\/script/gi, "<\\/script");
@@ -65,6 +73,25 @@ function toolError(message) {
     structuredContent: { error: message },
     content: [{ type: "text", text: message }],
   };
+}
+
+async function buildOpenAppState(projectId) {
+  const projects = await listProjects();
+
+  if (!projectId) {
+    return {
+      project: projects[0] ?? null,
+      projects,
+    };
+  }
+
+  const project = await getProject(projectId);
+
+  if (!project) {
+    throw new TypeError(`Project ${projectId} was not found.`);
+  }
+
+  return { project, projects };
 }
 
 function createMcpServer() {
@@ -100,6 +127,29 @@ function createMcpServer() {
       ],
     }),
   );
+
+  registerAppTool(server, "open_app", {
+    title: "Open app",
+    description: "Open the YouTube HTML Editor app and preload project data for the widget.",
+    inputSchema: {
+      project_id: z.string().uuid().optional(),
+    },
+    outputSchema: openAppStateSchema,
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    _meta: {
+      ui: {
+        resourceUri: APP_RESOURCE_URI,
+      },
+    },
+  }, async ({ project_id }) => {
+    try {
+      const appState = await buildOpenAppState(project_id);
+      const selectedProjectId = appState.project?.id ?? "none";
+      return toolResult(appState, `Opened app with project ${selectedProjectId}.`);
+    } catch (error) {
+      return toolError(error.message);
+    }
+  });
 
   server.registerTool("create_project", {
     title: "Create project",
