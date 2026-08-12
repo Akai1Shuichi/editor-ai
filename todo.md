@@ -52,13 +52,13 @@ Mục tiêu bản đầu: người dùng tạo project bằng link YouTube trong
 
 ## 6. Làm widget MCP App: màn Tạo project
 
-- [ ] Đăng ký một UI resource, ví dụ `ui://youtube-html-editor/app.html`.
-- [ ] Tạo HTML widget mới trong `public/app.html`.
-- [ ] Dùng MCP Apps bridge để gọi `ui/initialize` và `tools/call`.
-- [ ] Tạo form gồm `title`, `source_url`, nút “Tạo project & phân tích”.
-- [ ] Khi tạo thành công, lưu `project_id` trong state widget.
-- [ ] Gửi `ui/message` vào conversation với URL và `project_id`, yêu cầu ChatGPT phân tích đầy đủ nội dung video.
-- [ ] Hiển thị link/project ID tạo thành công.
+- [x] Đăng ký một UI resource, ví dụ `ui://youtube-html-editor/app.html`.
+- [x] Tạo HTML widget mới trong `public/app.html`.
+- [x] Dùng MCP Apps bridge để gọi `ui/initialize` và `tools/call`.
+- [x] Tạo form gồm `title`, `source_url`, nút “Tạo project & phân tích”.
+- [x] Khi tạo thành công, lưu `project_id` trong state widget.
+- [x] Gửi `ui/message` vào conversation với URL và `project_id`, yêu cầu ChatGPT phân tích đầy đủ nội dung video.
+- [x] Hiển thị link/project ID tạo thành công.
 
 ## 7. Làm widget MCP App: màn Get project
 

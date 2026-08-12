@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YouTube HTML Editor</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f7f0de;
+        --paper-strong: #f1e2b7;
+        --ink: #17120c;
+        --muted: #6d5b46;
+        --accent: #c24d2c;
+        --accent-deep: #8d2e15;
+        --line: rgba(23, 18, 12, 0.12);
+        --success: #177245;
+        --danger: #b2352f;
+        --shadow: 0 20px 60px rgba(90, 55, 26, 0.16);
+        --radius: 24px;
+        --font-display: "Avenir Next Condensed", "Franklin Gothic Medium", "Arial Narrow", sans-serif;
+        --font-body: "Avenir Next", "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--font-body);
+        background:
+          radial-gradient(circle at top left, rgba(194, 77, 44, 0.18), transparent 32%),
+          linear-gradient(180deg, #fffaf0 0%, var(--paper) 100%);
+        color: var(--ink);
+      }
+
+      main {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+
+      .shell {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: rgba(255, 251, 241, 0.94);
+        box-shadow: var(--shadow);
+      }
+
+      .shell::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto auto 0;
+        width: 180px;
+        height: 180px;
+        background: radial-gradient(circle, rgba(194, 77, 44, 0.12), transparent 70%);
+        pointer-events: none;
+      }
+
+      .hero,
+      .body {
+        position: relative;
+        z-index: 1;
+      }
+
+      .hero {
+        display: grid;
+        gap: 12px;
+        padding: 28px 28px 8px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        width: fit-content;
+        padding: 6px 10px;
+        border: 1px solid rgba(194, 77, 44, 0.24);
+        border-radius: 999px;
+        background: rgba(194, 77, 44, 0.08);
+        color: var(--accent-deep);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: clamp(34px, 7vw, 56px);
+        line-height: 0.95;
+        letter-spacing: -0.04em;
+        text-transform: uppercase;
+      }
+
+      .lede {
+        max-width: 56ch;
+        margin: 0;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.6;
+      }
+
+      .body {
+        display: grid;
+        gap: 20px;
+        padding: 20px 28px 28px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 20px;
+      }
+
+      .panel,
+      form {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      form {
+        display: grid;
+        gap: 16px;
+        padding: 18px;
+      }
+
+      .field {
+        display: grid;
+        gap: 8px;
+      }
+
+      label {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      input {
+        width: 100%;
+        padding: 14px 16px;
+        border: 1px solid rgba(23, 18, 12, 0.14);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.96);
+        color: var(--ink);
+        font: inherit;
+      }
+
+      input:focus {
+        outline: 2px solid rgba(194, 77, 44, 0.28);
+        outline-offset: 2px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+
+      button {
+        appearance: none;
+        border: 0;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+        color: #fff7f1;
+        padding: 14px 20px;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button[disabled] {
+        cursor: wait;
+        opacity: 0.7;
+      }
+
+      .hint {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .panel {
+        display: grid;
+        gap: 14px;
+        padding: 18px;
+      }
+
+      .panel h2 {
+        margin: 0;
+        font-size: 14px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .status {
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(23, 18, 12, 0.05);
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .status.error {
+        background: rgba(178, 53, 47, 0.1);
+        color: var(--danger);
+      }
+
+      .status.success {
+        background: rgba(23, 114, 69, 0.1);
+        color: var(--success);
+      }
+
+      dl {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px 16px;
+        margin: 0;
+      }
+
+      dt {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      dd {
+        margin: 6px 0 0;
+        font-size: 14px;
+        line-height: 1.5;
+        word-break: break-word;
+      }
+
+      a {
+        color: var(--accent-deep);
+      }
+
+      code {
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 13px;
+      }
+
+      @media (min-width: 860px) {
+        .grid {
+          grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+          align-items: start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="shell">
+        <header class="hero">
+          <span class="eyebrow">MCP App · Create Project</span>
+          <h1>Phân tích video trước, lưu HTML sau.</h1>
+          <p class="lede">
+            Nhập link YouTube để tạo project. Sau khi tạo thành công, widget sẽ gửi
+            `project_id` và URL vào đúng conversation để ChatGPT tự phân tích đầy đủ video.
+          </p>
+        </header>
+
+        <div class="body">
+          <div class="grid">
+            <form id="create-project-form">
+              <div class="field">
+                <label for="title">Title</label>
+                <input id="title" name="title" maxlength="200" placeholder="Ví dụ: Hook analysis cutdown" required />
+              </div>
+
+              <div class="field">
+                <label for="source-url">Source URL</label>
+                <input
+                  id="source-url"
+                  name="source_url"
+                  type="url"
+                  inputmode="url"
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  required
+                />
+              </div>
+
+              <div class="actions">
+                <button id="submit-button" type="submit">Tạo project &amp; phân tích</button>
+                <span class="hint">Bridge sẽ dùng `tools/call` và sau đó gửi `ui/message`.</span>
+              </div>
+            </form>
+
+            <aside class="panel">
+              <h2>Trạng thái</h2>
+              <div id="connection-status" class="status">Đang khởi tạo widget…</div>
+              <div id="action-status" class="status">Chưa có thao tác nào.</div>
+            </aside>
+          </div>
+
+          <section class="panel" id="project-panel" hidden>
+            <h2>Project vừa tạo</h2>
+            <dl>
+              <div>
+                <dt>Project ID</dt>
+                <dd><code id="project-id">-</code></dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd id="project-status">-</dd>
+              </div>
+              <div>
+                <dt>Source URL</dt>
+                <dd><a id="project-url" href="#" rel="noreferrer" target="_blank">-</a></dd>
+              </div>
+              <div>
+                <dt>Preview</dt>
+                <dd><a id="project-preview" href="#" rel="noreferrer" target="_blank">-</a></dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      const extAppsBundleSource = "__MCP_APPS_BUNDLE__";
+      const extAppsBundleUrl = URL.createObjectURL(
+        new Blob([extAppsBundleSource], { type: "text/javascript" }),
+      );
+      const { App } = await import(extAppsBundleUrl);
+      URL.revokeObjectURL(extAppsBundleUrl);
+
+      const form = document.getElementById("create-project-form");
+      const titleInput = document.getElementById("title");
+      const sourceUrlInput = document.getElementById("source-url");
+      const submitButton = document.getElementById("submit-button");
+      const connectionStatus = document.getElementById("connection-status");
+      const actionStatus = document.getElementById("action-status");
+      const projectPanel = document.getElementById("project-panel");
+      const projectIdNode = document.getElementById("project-id");
+      const projectStatusNode = document.getElementById("project-status");
+      const projectUrlNode = document.getElementById("project-url");
+      const projectPreviewNode = document.getElementById("project-preview");
+
+      const state = {
+        app: null,
+        projectId: null,
+        project: null,
+      };
+
+      function setStatus(node, message, kind = "") {
+        node.textContent = message;
+        node.className = kind ? `status ${kind}` : "status";
+      }
+
+      function setSubmitting(submitting) {
+        submitButton.disabled = submitting;
+        submitButton.textContent = submitting ? "Đang tạo project…" : "Tạo project & phân tích";
+      }
+
+      function isBridgeReady() {
+        return state.app !== null;
+      }
+
+      async function callToolInStandalone(name, args) {
+        const response = await fetch("/mcp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: crypto.randomUUID(),
+            method: "tools/call",
+            params: { name, arguments: args },
+          }),
+        });
+
+        const result = await response.json();
+
+        if (result.error) {
+          throw new Error(result.error.message ?? "Tool call failed.");
+        }
+
+        if (result.result?.isError) {
+          throw new Error(result.result?.structuredContent?.error ?? "Tool returned an error.");
+        }
+
+        return result.result;
+      }
+
+      async function createProject(args) {
+        if (isBridgeReady()) {
+          return state.app.callServerTool({ name: "create_project", arguments: args });
+        }
+
+        return callToolInStandalone("create_project", args);
+      }
+
+      async function sendAnalysisMessage(project) {
+        const text = [
+          `Hãy phân tích đầy đủ video YouTube này trong conversation hiện tại: ${project.sourceUrl}`,
+          `project_id: ${project.id}`,
+          "Không dùng MCP server để tải hay phân tích video.",
+          "Hãy tự phân tích đầy đủ nội dung, cấu trúc, hook, nhịp dựng, caption, CTA và các ý edit phù hợp.",
+        ].join("\n");
+
+        if (!isBridgeReady()) {
+          setStatus(
+            actionStatus,
+            `Project đã tạo nhưng trang standalone không gửi được ui/message. Hãy mở app trong ChatGPT và dùng project_id ${project.id}.`,
+            "success",
+          );
+          return;
+        }
+
+        await state.app.sendMessage({
+          role: "user",
+          content: [{ type: "text", text }],
+        });
+
+        await state.app.updateModelContext({
+          structuredContent: {
+            current_project: {
+              id: project.id,
+              title: project.title,
+              sourceUrl: project.sourceUrl,
+              status: project.status,
+              previewUrl: project.previewUrl,
+            },
+          },
+        });
+
+        setStatus(
+          actionStatus,
+          `Đã tạo project và gửi yêu cầu phân tích vào conversation cho project ${project.id}.`,
+          "success",
+        );
+      }
+
+      function renderProject(project) {
+        state.projectId = project.id;
+        state.project = project;
+        projectPanel.hidden = false;
+        projectIdNode.textContent = project.id;
+        projectStatusNode.textContent = project.status;
+        projectUrlNode.textContent = project.sourceUrl;
+        projectUrlNode.href = project.sourceUrl;
+        if (project.previewUrl) {
+          projectPreviewNode.textContent = project.previewUrl;
+          projectPreviewNode.href = project.previewUrl;
+        } else {
+          projectPreviewNode.textContent = "Chưa có edit.html";
+          projectPreviewNode.removeAttribute("href");
+        }
+      }
+
+      async function connectBridge() {
+        const app = new App(
+          { name: "youtube-html-editor-widget", version: "0.1.0" },
+          { availableDisplayModes: ["inline", "fullscreen"] },
+        );
+
+        app.onhostcontextchanged = () => {
+          const hostContext = app.getHostContext();
+          const hostText = hostContext?.displayMode
+            ? `Đã kết nối MCP Apps bridge · mode ${hostContext.displayMode}.`
+            : "Đã kết nối MCP Apps bridge.";
+          setStatus(connectionStatus, hostText, "success");
+        };
+
+        await app.connect();
+        state.app = app;
+
+        const hostContext = app.getHostContext();
+        const mode = hostContext?.displayMode ?? "inline";
+        setStatus(connectionStatus, `Đã kết nối MCP Apps bridge · mode ${mode}.`, "success");
+
+        try {
+          await app.requestDisplayMode({ mode: "fullscreen" });
+        } catch {
+          // Inline mode is acceptable when fullscreen is unavailable.
+        }
+      }
+
+      try {
+        await connectBridge();
+      } catch (error) {
+        setStatus(
+          connectionStatus,
+          `Standalone mode · ${error instanceof Error ? error.message : "Không kết nối được bridge."}`,
+          "",
+        );
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        setSubmitting(true);
+        setStatus(actionStatus, "Đang tạo project…");
+
+        try {
+          const title = titleInput.value.trim();
+          const sourceUrl = sourceUrlInput.value.trim();
+          const result = await createProject({ title, source_url: sourceUrl });
+          const project = result.structuredContent?.project;
+
+          if (!project) {
+            throw new Error("Tool did not return project metadata.");
+          }
+
+          renderProject(project);
+          await sendAnalysisMessage(project);
+        } catch (error) {
+          setStatus(
+            actionStatus,
+            error instanceof Error ? error.message : "Không tạo được project.",
+            "error",
+          );
+        } finally {
+          setSubmitting(false);
+        }
+      });
+    </script>
+  </body>
+</html>

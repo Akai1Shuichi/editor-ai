@@ -1,7 +1,12 @@
 import { createServer } from "node:http";
+import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { registerAppResource, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
 import { z } from "zod";
 
 import {
@@ -13,8 +18,13 @@ import {
   saveProject,
 } from "./project-storage.js";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
 const PORT = Number.parseInt(process.env.PORT ?? "8787", 10);
 const MAX_HTML_BYTES = 1_000_000;
+const APP_RESOURCE_URI = "ui://youtube-html-editor/app.html";
+const APP_HTML_PATH = join(__dirname, "public", "app.html");
+const EMPTY_WIDGET_PATH = join(__dirname, "public", "editor-widget.html");
 const projectSchema = z.object({
   id: z.string().uuid(),
   title: z.string(),
@@ -25,6 +35,22 @@ const projectSchema = z.object({
   previewUrl: z.string().nullable(),
 });
 const projectsSchema = z.array(projectSchema);
+
+function htmlScriptSafeString(value) {
+  return JSON.stringify(value).replace(/<\/script/gi, "<\\/script");
+}
+
+async function renderAppHtml() {
+  const [templateHtml, appBundle] = await Promise.all([
+    readFile(APP_HTML_PATH, "utf8"),
+    readFile(require.resolve("@modelcontextprotocol/ext-apps/app-with-deps"), "utf8"),
+  ]);
+
+  return templateHtml.replace(
+    "\"__MCP_APPS_BUNDLE__\"",
+    htmlScriptSafeString(appBundle),
+  );
+}
 
 function toolResult(structuredContent, message) {
   return {
@@ -55,6 +81,25 @@ function createMcpServer() {
       "Only tell the user that the edit is ready after save_edit_html succeeds.",
     ].join("\n"),
   });
+
+  registerAppResource(
+    server,
+    "YouTube HTML Editor App",
+    APP_RESOURCE_URI,
+    {
+      description: "Create a YouTube project and ask ChatGPT to analyze the video in the current conversation.",
+      _meta: { ui: { prefersBorder: true } },
+    },
+    async () => ({
+      contents: [
+        {
+          uri: APP_RESOURCE_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await renderAppHtml(),
+        },
+      ],
+    }),
+  );
 
   server.registerTool("create_project", {
     title: "Create project",
@@ -152,6 +197,11 @@ function sendHtml(response, statusCode, html) {
   response.end(html);
 }
 
+function sendText(response, statusCode, text, contentType) {
+  response.writeHead(statusCode, { "Content-Type": contentType });
+  response.end(text);
+}
+
 const httpServer = createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
 
@@ -160,6 +210,24 @@ const httpServer = createServer(async (request, response) => {
       name: "youtube-html-editor",
       mcpEndpoint: "/mcp",
     });
+  }
+
+  if (request.method === "GET" && url.pathname === "/app") {
+    try {
+      return sendHtml(response, 200, await renderAppHtml());
+    } catch (error) {
+      console.error("Failed to render app widget:", error);
+      return sendJson(response, 500, { error: "Unable to load app widget" });
+    }
+  }
+
+  if (request.method === "GET" && url.pathname === "/editor-widget.html") {
+    try {
+      const html = await readFile(EMPTY_WIDGET_PATH, "utf8");
+      return sendText(response, 200, html, "text/html; charset=utf-8");
+    } catch {
+      return sendJson(response, 404, { error: "Not found" });
+    }
   }
 
   const previewMatch = url.pathname.match(/^\/projects\/([^/]+)\/preview$/);
