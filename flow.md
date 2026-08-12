@@ -1,155 +1,268 @@
-# Flow: YouTube → ChatGPT phân tích → bản edit HTML
+Luồng hoạt động của widget này gồm hai quy trình chính:
 
-## Mục tiêu
+1.  Luồng tạo project và phân tích video
+    sequenceDiagram
+    participant U as Người dùng
+    participant W as Widget
+    participant C as ChatGPT
+    participant S as MCP Server
 
-Project chỉ làm một việc: lưu link YouTube vào một project, để ChatGPT phân tích video trong cuộc chat, sau đó nhận **một file HTML tự chứa** do ChatGPT tạo và gắn file đó vào project để preview/mở lại.
+        W->>C: app.connect()
+        C-->>W: Bridge đã kết nối
 
-Không làm timeline editor, scene editor, layer editor hay xuất video ở giai đoạn này.
+        U->>W: Nhập title và YouTube URL
+        W->>S: callServerTool(create_project)
+        S->>S: Tạo project.json
+        S-->>W: Trả project
 
-Ví dụ yêu cầu trong ChatGPT:
+        W->>C: updateModelContext(current_project)
+        W->>C: sendMessage("Phân tích video")
+        C-->>U: Kết quả phân tích
 
-```text
-https://www.youtube.com/watch?v=7zCsfe57tpU&t=42s
+Bước 1: Widget kết nối với ChatGPT
 
-Phân tích đầy đủ nội dung, và edit video link trên.
-```
+Khi widget được mở:
 
-Sau khi ChatGPT phân tích xong, người dùng gửi:
+await app.connect();
+state.app = app;
 
-```text
-Cho tôi bản edit bằng HTML.
-```
+Sau bước này, widget mới sử dụng được:
 
-## Kiến trúc tối giản
+state.app.callServerTool();
+state.app.updateModelContext();
+state.app.sendMessage();
 
-```text
-ChatGPT conversation
-  │
-  ├─ MCP tool: create_project(source_url)
-  │       └─ lưu metadata project vào data/projects/<project-id>/project.json
-  │
-  ├─ ChatGPT tự phân tích URL YouTube trong chat
-  │       └─ MCP server không tải, không scrape, không phân tích video
-  │
-  └─ MCP tool: save_edit_html(project_id, html)
-          └─ lưu data/projects/<project-id>/edit.html
-                    │
-                    ├─ MCP tool: get_project(project_id) trả metadata + preview URL
-                    └─ GET /projects/<project-id>/preview render edit.html
-```
+Nếu mở app.html trực tiếp trên trình duyệt, bridge không tồn tại nên widget không thể gửi message vào ChatGPT.
 
-MCP server là nơi lưu dữ liệu. ChatGPT là nơi suy luận/phân tích và viết mã HTML.
+Bước 2: Người dùng tạo project
 
-## Hai màn UI cần có
+Người dùng nhập:
 
-### 1. Màn tạo project
+title: Phân tích video AI
+source_url: https://youtube.com/watch?v=abc
 
-Form chỉ cần:
+Widget gọi thẳng MCP Server:
 
-- `Tên project` (có thể tự điền từ prompt hoặc link).
-- `Link YouTube` — bắt buộc, validate là URL YouTube hợp lệ.
-- Nút **Tạo project và nhờ ChatGPT phân tích**.
+const result = await state.app.callServerTool({
+name: "create_project",
+arguments: {
+title,
+source_url: sourceUrl,
+},
+});
 
-Khi bấm nút:
+MCP Server chạy hàm:
 
-1. Widget gọi `create_project` qua MCP với `title` và `source_url`.
-2. Server tạo thư mục project và trả `project_id`.
-3. Widget gửi `ui/message` vào cùng conversation với prompt có `project_id`, `source_url` và yêu cầu ChatGPT phân tích đầy đủ video.
-4. ChatGPT trả phần phân tích trong chat. Không cần lưu analysis vào project ở bản đầu tiên.
+createProject(title, sourceUrl);
 
-### 2. Màn Get project
+Sau đó tạo:
 
-Màn này hiển thị:
+data/projects/<project-id>/project.json
 
-- Tên, `project_id`, link YouTube, thời gian tạo/cập nhật.
-- Trạng thái: `created` hoặc `html_ready`.
-- Nếu đã có HTML: nút **Xem bản edit HTML** mở `preview_url`.
-- Nút **Tạo bản edit bằng HTML**. Nút này gửi `ui/message` kèm `project_id`, yêu cầu ChatGPT tạo HTML và bắt buộc gọi `save_edit_html`.
+Và trả về:
 
-Không hiển thị hoặc chỉnh sửa mã HTML trong widget ở bản đầu; preview ở trang riêng để hạn chế UI và CSP phức tạp.
-
-## MCP tools tối thiểu
-
-| Tool | Ai gọi | Mục đích |
-| --- | --- | --- |
-| `create_project` | Widget hoặc ChatGPT | Tạo project từ tên và YouTube URL. |
-| `get_project` | Widget hoặc ChatGPT | Đọc metadata, trạng thái và `preview_url`. |
-| `list_projects` | Widget | Liệt kê để chọn project cũ. |
-| `save_edit_html` | Chỉ ChatGPT | Nhận chuỗi HTML hoàn chỉnh, validate, lưu `edit.html`, đổi trạng thái thành `html_ready`. |
-
-`save_edit_html` là điểm nối quan trọng: ChatGPT **không upload file thật** vào source code. ChatGPT viết toàn bộ nội dung HTML vào tham số `html` của tool; server biến chuỗi đó thành file `edit.html` thuộc project.
-
-Schema ý tưởng:
-
-```ts
-save_edit_html({
-  project_id: string,
-  html: string,          // tài liệu HTML hoàn chỉnh, bắt đầu bằng <!doctype html>
-  title?: string
-})
-```
-
-Tool này chỉ nhận HTML hoàn chỉnh. Không cho phép tên file hoặc đường dẫn từ ChatGPT để tránh ghi file ra ngoài thư mục project.
-
-## Luồng thao tác hoàn chỉnh
-
-```text
-1. User mở MCP App trong ChatGPT
-2. User nhập YouTube URL ở màn tạo project
-3. Widget → create_project
-4. Server lưu project.json, trả project_id
-5. Widget → ui/message:
-   “Phân tích đầy đủ video <URL>. Đây là project_id <ID>.”
-6. ChatGPT phân tích video và trả kết quả vào conversation
-7. User nói: “Cho tôi bản edit bằng HTML.”
-8. ChatGPT tạo HTML tự chứa rồi gọi save_edit_html(project_id, html)
-9. Server lưu edit.html và trả preview_url
-10. User mở Get project → Xem bản edit HTML → /projects/<ID>/preview
-```
-
-## Quy ước prompt cho ChatGPT
-
-MCP server phải có `instructions` ngắn và rõ:
-
-```text
-Khi user cung cấp YouTube URL, hãy tự phân tích nội dung video trong ChatGPT.
-Khi user yêu cầu “bản edit bằng HTML”, gọi get_project để lấy project_id nếu cần.
-Tạo một HTML độc lập, responsive, có thể mở trực tiếp bằng trình duyệt.
-Sau đó bắt buộc gọi save_edit_html với toàn bộ mã HTML.
-Chỉ trả lời rằng bản edit đã sẵn sàng sau khi tool lưu thành công.
-```
-
-HTML sinh ra nên là một mockup/edit plan trực quan (khung video 9:16, caption, timeline/shot list, hiệu ứng và CTA), không được tuyên bố là file video đã render.
-
-## Dữ liệu một project
-
-```text
-data/
-  projects/
-    <project-id>/
-      project.json     # metadata
-      edit.html        # chỉ xuất hiện sau save_edit_html
-```
-
-`project.json` tối thiểu:
-
-```json
 {
-  "id": "uuid",
-  "title": "Video edit",
-  "sourceUrl": "https://www.youtube.com/watch?v=...",
-  "status": "created",
-  "createdAt": "ISO date",
-  "updatedAt": "ISO date",
-  "previewUrl": null
+structuredContent: {
+project: {
+id: "abc-123",
+title: "Phân tích video AI",
+sourceUrl: "https://youtube.com/watch?v=abc",
+status: "created",
+previewUrl: null,
+},
+},
 }
-```
+Bước 3: Cập nhật project hiện tại
 
-Sau khi lưu HTML, đổi `status` thành `html_ready` và đặt `previewUrl` là `/projects/<project-id>/preview`.
+Widget lấy project vừa tạo:
 
-## Ranh giới trách nhiệm
+const project = result.structuredContent.project;
 
-- Widget: tạo project, đọc project, gửi prompt và mở preview.
-- MCP server: validate input, lưu/đọc file project, cung cấp tools và route preview.
-- ChatGPT: phân tích video YouTube và tạo nội dung `edit.html`.
-- `edit.html`: sản phẩm đầu ra để người dùng xem; không phải widget của MCP App.
+Sau đó cập nhật context:
+
+await state.app.updateModelContext({
+structuredContent: {
+current_project: project,
+},
+});
+
+Bây giờ ChatGPT biết:
+
+Project hiện tại là abc-123.
+
+Nhưng ChatGPT chưa bắt đầu phân tích vì updateModelContext() chỉ cập nhật thông tin, không giao nhiệm vụ.
+
+Bước 4: Gửi yêu cầu phân tích
+
+Widget gọi:
+
+await state.app.sendMessage({
+role: "user",
+content: [
+{
+type: "text",
+text: `Hãy phân tích video ${project.sourceUrl}`,
+},
+],
+});
+
+Message xuất hiện trong conversation. ChatGPT nhận URL và bắt đầu phân tích.
+
+Ở bước này MCP Server không phân tích video. ChatGPT tự xử lý URL bằng khả năng hiện có.
+
+2. Luồng tạo bản edit HTML
+
+Sau khi ChatGPT đã phân tích xong, người dùng chọn project và bấm:
+
+Tạo bản edit bằng HTML
+sequenceDiagram
+participant U as Người dùng
+participant W as Widget
+participant C as ChatGPT
+participant S as MCP Server
+
+    U->>W: Chọn project
+    W->>S: callServerTool(get_project)
+    S-->>W: Trả metadata project
+
+    W->>C: updateModelContext(current_project)
+    W->>C: sendMessage("Tạo bản edit HTML")
+    C->>C: Tạo nội dung HTML
+    C->>S: Gọi save_edit_html
+    S->>S: Lưu edit.html
+    S-->>C: Lưu thành công
+    C-->>U: Thông báo hoàn tất
+
+    W->>S: callServerTool(get_project)
+    S-->>W: status = html_ready
+
+Bước 1: Widget lấy project
+const result = await state.app.callServerTool({
+name: "get_project",
+arguments: {
+project_id: selectedProjectId,
+},
+});
+
+Server trả metadata hiện tại:
+
+{
+id: "abc-123",
+status: "created",
+previewUrl: null,
+}
+Bước 2: Widget cập nhật context
+await state.app.updateModelContext({
+structuredContent: {
+current_project: project,
+},
+});
+
+ChatGPT biết chính xác project nào cần được tạo HTML.
+
+Bước 3: Widget giao việc cho ChatGPT
+await state.app.sendMessage({
+role: "user",
+content: [
+{
+type: "text",
+text: `
+Dựa vào phần phân tích trước đó,
+hãy tạo HTML cho project abc-123
+và gọi save_edit_html.
+`,
+},
+],
+});
+
+sendMessage() không trực tiếp gọi save_edit_html. Nó yêu cầu ChatGPT thực hiện công việc.
+
+Bước 4: ChatGPT tạo HTML
+
+ChatGPT dựa trên phần phân tích trước đó để tạo:
+
+<!doctype html>
+<html lang="vi">
+  <head>
+    <style>
+      /* CSS */
+    </style>
+  </head>
+
+  <body>
+    <!-- Nội dung bản edit -->
+
+    <script>
+      // Hiệu ứng và điều khiển
+    </script>
+
+  </body>
+</html>
+Bước 5: ChatGPT gọi save_edit_html
+
+Sau khi tạo xong nội dung, ChatGPT gọi MCP tool:
+
+{
+"project_id": "abc-123",
+"title": "Bản edit video AI",
+"html": "<!doctype html><html>...</html>"
+}
+
+MCP Server lưu file:
+
+data/projects/abc-123/edit.html
+
+Đồng thời cập nhật project.json:
+
+{
+"id": "abc-123",
+"status": "html_ready",
+"previewUrl": "/projects/abc-123/preview"
+}
+Bước 6: Widget làm mới trạng thái
+
+Widget poll hoặc người dùng bấm “Làm mới”:
+
+await state.app.callServerTool({
+name: "get_project",
+arguments: {
+project_id: "abc-123",
+},
+});
+
+Kết quả mới:
+
+{
+status: "html_ready",
+previewUrl: "/projects/abc-123/preview",
+}
+
+Widget lúc này hiển thị nút:
+
+Mở bản preview
+Tóm tắt vai trò
+callServerTool()
+→ Widget gọi thẳng MCP Server
+→ Dùng để tạo, đọc và liệt kê project
+
+updateModelContext()
+→ Widget cho ChatGPT biết project đang chọn
+→ Không tạo phản hồi, không lưu dữ liệu
+
+sendMessage()
+→ Widget gửi yêu cầu vào conversation
+→ ChatGPT bắt đầu phân tích hoặc tạo HTML
+
+Luồng hoàn chỉnh:
+
+Mở widget
+→ connect()
+→ create_project
+→ updateModelContext()
+→ sendMessage("Phân tích video")
+→ ChatGPT phân tích
+→ sendMessage("Tạo HTML")
+→ ChatGPT gọi save_edit_html
+→ Server lưu edit.html
+→ get_project
+→ Mở preview
