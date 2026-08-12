@@ -3,6 +3,8 @@ import { createServer } from "node:http";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
+import { getEditHtml } from "./project-storage.js";
+
 const PORT = Number.parseInt(process.env.PORT ?? "8787", 10);
 
 function createMcpServer() {
@@ -28,6 +30,11 @@ function sendJson(response, statusCode, body) {
   response.end(JSON.stringify(body));
 }
 
+function sendHtml(response, statusCode, html) {
+  response.writeHead(statusCode, { "Content-Type": "text/html; charset=utf-8" });
+  response.end(html);
+}
+
 const httpServer = createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
 
@@ -36,6 +43,25 @@ const httpServer = createServer(async (request, response) => {
       name: "youtube-html-editor",
       mcpEndpoint: "/mcp",
     });
+  }
+
+  const previewMatch = url.pathname.match(/^\/projects\/([^/]+)\/preview$/);
+  if (request.method === "GET" && previewMatch) {
+    try {
+      const html = await getEditHtml(decodeURIComponent(previewMatch[1]));
+
+      if (html === null) {
+        return sendHtml(response, 404, "<!doctype html><title>Chưa có bản edit HTML</title><p>Chưa có bản edit HTML cho project này.</p>");
+      }
+
+      return sendHtml(response, 200, html);
+    } catch (error) {
+      if (error instanceof TypeError || error instanceof URIError) {
+        return sendJson(response, 404, { error: "Project not found" });
+      }
+      console.error("Failed to load project preview:", error);
+      return sendJson(response, 500, { error: "Unable to load preview" });
+    }
   }
 
   if (url.pathname !== "/mcp") {

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECTS_DIR = join(__dirname, "data", "projects");
 const PROJECT_FILE_NAME = "project.json";
+const EDIT_HTML_FILE_NAME = "edit.html";
 const YOUTUBE_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"]);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -22,6 +23,11 @@ function assertProjectId(projectId) {
 function projectFilePath(projectId) {
   assertProjectId(projectId);
   return join(PROJECTS_DIR, projectId, PROJECT_FILE_NAME);
+}
+
+function editHtmlFilePath(projectId) {
+  assertProjectId(projectId);
+  return join(PROJECTS_DIR, projectId, EDIT_HTML_FILE_NAME);
 }
 
 export function validateYouTubeUrl(sourceUrl) {
@@ -69,6 +75,19 @@ export async function getProject(projectId) {
   try {
     const content = await readFile(path, "utf8");
     return JSON.parse(content);
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function getEditHtml(projectId) {
+  const path = editHtmlFilePath(projectId);
+
+  try {
+    return await readFile(path, "utf8");
   } catch (error) {
     if (error?.code === "ENOENT") {
       return null;
