@@ -27,9 +27,10 @@ const require = createRequire(import.meta.url);
 const PORT = Number.parseInt(process.env.PORT ?? "8787", 10);
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL?.replace(/\/$/, "") ?? null;
 const MAX_HTML_BYTES = 1_000_000;
-const APP_RESOURCE_URI = "ui://youtube-html-editor/app.html";
+const APP_RESOURCE_URI = "ui://youtube-html-editor/app-v0-3.html";
 const APP_HTML_PATH = join(__dirname, "public", "app.html");
 const EMPTY_WIDGET_PATH = join(__dirname, "public", "editor-widget.html");
+const EDIT_WRAPPER_PATH = join(__dirname, "data", "template", "edit_wrapper.html");
 const APP_CSP = {
   frameDomains: ["https://www.youtube.com", "https://www.youtube-nocookie.com"],
 };
@@ -55,13 +56,30 @@ function htmlScriptSafeString(value) {
 async function renderAppHtml() {
   const [templateHtml, appBundle] = await Promise.all([
     readFile(APP_HTML_PATH, "utf8"),
-    readFile(require.resolve("@modelcontextprotocol/ext-apps/app-with-deps"), "utf8"),
+    readFile(
+      require.resolve("@modelcontextprotocol/ext-apps/app-with-deps"),
+      "utf8",
+    ),
   ]);
 
-  return templateHtml.replace(
-    "\"__MCP_APPS_BUNDLE__\"",
-    () => htmlScriptSafeString(appBundle),
+  return templateHtml.replace('"__MCP_APPS_BUNDLE__"', () =>
+    htmlScriptSafeString(appBundle),
   );
+}
+
+function htmlTextSafe(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+async function renderEditWrapper({ title, contentHtml }) {
+  const wrapper = await readFile(EDIT_WRAPPER_PATH, "utf8");
+  return wrapper
+    .replace("__EDIT_TITLE__", htmlTextSafe(title))
+    .replace("__EDIT_CONTENT__", contentHtml);
 }
 
 function toolResult(structuredContent, message) {
@@ -99,14 +117,20 @@ async function buildOpenAppState(projectId) {
 }
 
 function createPublicUrl(pathname, requestOrigin) {
-  const baseUrl = PUBLIC_BASE_URL ?? requestOrigin ?? `http://localhost:${PORT}`;
+  const baseUrl =
+    PUBLIC_BASE_URL ?? requestOrigin ?? `http://localhost:${PORT}`;
   return new URL(pathname, `${baseUrl}/`).toString();
 }
 
 function getRequestOrigin(request) {
-  const forwardedProto = request.headers["x-forwarded-proto"]?.split(",", 1)[0]?.trim();
-  const forwardedHost = request.headers["x-forwarded-host"]?.split(",", 1)[0]?.trim();
-  const protocol = forwardedProto || (request.socket.encrypted ? "https" : "http");
+  const forwardedProto = request.headers["x-forwarded-proto"]
+    ?.split(",", 1)[0]
+    ?.trim();
+  const forwardedHost = request.headers["x-forwarded-host"]
+    ?.split(",", 1)[0]
+    ?.trim();
+  const protocol =
+    forwardedProto || (request.socket.encrypted ? "https" : "http");
   const host = forwardedHost || request.headers.host;
 
   return host ? `${protocol}://${host}` : null;
@@ -119,7 +143,10 @@ function projectForResponse(project, requestOrigin) {
 
   return {
     ...project,
-    previewUrl: createPublicUrl(`/projects/${project.id}/edit.html`, requestOrigin),
+    previewUrl: createPublicUrl(
+      `/projects/${project.id}/edit.html`,
+      requestOrigin,
+    ),
   };
 }
 
@@ -130,11 +157,11 @@ function createMcpServer({ requestOrigin } = {}) {
     instructions: [
       "When the user provides a YouTube URL, analyze the video yourself in the ChatGPT conversation.",
       "This MCP server only stores projects and HTML. It does not download, scrape, or analyze YouTube videos.",
-      "When the user asks for an edit in HTML, create one complete self-contained responsive HTML document, including all required CSS and JavaScript.",
-      "The HTML is an edit mockup or plan, not a rendered MP4 video. It may show a 9:16 video frame, captions, shot list or timeline, effects, and a CTA.",
-      "Do not merely paste HTML code into the conversation. You must call save_edit_html with the full document for the correct project_id.",
+      "When the user asks for an edit, use save_edit_content. The server wraps your dynamic content in a minimal, stable parent HTML document with #edit-root and window.EditShell.",
+      "Send only the dynamic child fragment in content_html: it may include its own style, markup and script. You own the design, scenes, animations, transitions and controls; the shared parent intentionally contains none of these.",
+      "Do not paste HTML code into the conversation. Call save_edit_content for the correct project_id. Use save_edit_html only if the user explicitly requests a raw standalone HTML document without the shared wrapper.",
       "If the project_id is not known, call get_project or list_projects first.",
-      "Only tell the user that the edit is ready after save_edit_html succeeds.",
+      "Only tell the user that the edit is ready after the save tool succeeds.",
     ].join("\n"),
   });
 
@@ -143,7 +170,8 @@ function createMcpServer({ requestOrigin } = {}) {
     "YouTube HTML Editor App",
     APP_RESOURCE_URI,
     {
-      description: "Create a YouTube project and ask ChatGPT to analyze the video in the current conversation.",
+      description:
+        "Create a YouTube project and ask ChatGPT to analyze the video in the current conversation.",
       _meta: { ui: { csp: APP_CSP, prefersBorder: true } },
     },
     async () => ({
@@ -158,108 +186,213 @@ function createMcpServer({ requestOrigin } = {}) {
     }),
   );
 
-  registerAppTool(server, "open_app", {
-    title: "Open app",
-    description: "Open the YouTube HTML Editor app and preload project data for the widget.",
-    inputSchema: {
-      project_id: z.string().uuid().optional(),
-    },
-    outputSchema: openAppStateSchema,
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    _meta: {
-      ui: {
-        resourceUri: APP_RESOURCE_URI,
+  registerAppTool(
+    server,
+    "open_app",
+    {
+      title: "Open app",
+      description:
+        "Open the YouTube HTML Editor app and preload project data for the widget.",
+      inputSchema: {
+        project_id: z.string().uuid().optional(),
+      },
+      outputSchema: openAppStateSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+      _meta: {
+        ui: {
+          resourceUri: APP_RESOURCE_URI,
+        },
       },
     },
-  }, async ({ project_id }) => {
-    try {
-      const appState = await buildOpenAppState(project_id);
-      appState.project = projectForResponse(appState.project, requestOrigin);
-      appState.projects = appState.projects.map((project) => projectForResponse(project, requestOrigin));
-      const selectedProjectId = appState.project?.id ?? "none";
-      return toolResult(appState, `Opened app with project ${selectedProjectId}.`);
-    } catch (error) {
-      return toolError(error.message);
-    }
-  });
-
-  server.registerTool("create_project", {
-    title: "Create project",
-    description: "Create a project from a title and a valid YouTube URL.",
-    inputSchema: {
-      title: z.string().trim().min(1).max(200),
-      source_url: z.string().trim().url(),
+    async ({ project_id }) => {
+      try {
+        const appState = await buildOpenAppState(project_id);
+        appState.project = projectForResponse(appState.project, requestOrigin);
+        appState.projects = appState.projects.map((project) =>
+          projectForResponse(project, requestOrigin),
+        );
+        const selectedProjectId = appState.project?.id ?? "none";
+        return toolResult(
+          appState,
+          `Opened app with project ${selectedProjectId}.`,
+        );
+      } catch (error) {
+        return toolError(error.message);
+      }
     },
-    outputSchema: { project: projectSchema },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  }, async ({ title, source_url }) => {
-    try {
-      const project = await createProject(title, source_url);
-      return toolResult({ project }, `Created project ${project.id}.`);
-    } catch (error) {
-      return toolError(error.message);
-    }
-  });
+  );
 
-  server.registerTool("get_project", {
-    title: "Get project",
-    description: "Get project metadata and preview URL.",
-    inputSchema: { project_id: z.string().uuid() },
-    outputSchema: { project: projectSchema.nullable() },
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-  }, async ({ project_id }) => {
-    const project = await getProject(project_id);
-    return project
-      ? toolResult({ project: projectForResponse(project, requestOrigin) }, `Loaded project ${project.id}.`)
-      : toolError(`Project ${project_id} was not found.`);
-  });
-
-  server.registerTool("list_projects", {
-    title: "List projects",
-    description: "List stored projects for selection.",
-    outputSchema: { projects: projectsSchema },
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-  }, async () => {
-    const projects = await listProjects();
-    return toolResult(
-      { projects: projects.map((project) => projectForResponse(project, requestOrigin)) },
-      `Found ${projects.length} project(s).`,
-    );
-  });
-
-  server.registerTool("save_edit_html", {
-    title: "Save edit HTML",
-    description: "Save a complete, self-contained HTML edit mockup for one project.",
-    inputSchema: {
-      project_id: z.string().uuid(),
-      html: z.string().trim().min(1).max(MAX_HTML_BYTES),
-      title: z.string().trim().min(1).max(200).optional(),
+  server.registerTool(
+    "create_project",
+    {
+      title: "Create project",
+      description: "Create a project from a title and a valid YouTube URL.",
+      inputSchema: {
+        title: z.string().trim().min(1).max(200),
+        source_url: z.string().trim().url(),
+      },
+      outputSchema: { project: projectSchema },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
     },
-    outputSchema: { project: projectSchema },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  }, async ({ project_id, html, title }) => {
-    const project = await getProject(project_id);
+    async ({ title, source_url }) => {
+      try {
+        const project = await createProject(title, source_url);
+        return toolResult({ project }, `Created project ${project.id}.`);
+      } catch (error) {
+        return toolError(error.message);
+      }
+    },
+  );
 
-    if (!project) {
-      return toolError(`Project ${project_id} was not found.`);
-    }
+  server.registerTool(
+    "get_project",
+    {
+      title: "Get project",
+      description: "Get project metadata and preview URL.",
+      inputSchema: { project_id: z.string().uuid() },
+      outputSchema: { project: projectSchema.nullable() },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ project_id }) => {
+      const project = await getProject(project_id);
+      return project
+        ? toolResult(
+            { project: projectForResponse(project, requestOrigin) },
+            `Loaded project ${project.id}.`,
+          )
+        : toolError(`Project ${project_id} was not found.`);
+    },
+  );
 
-    if (Buffer.byteLength(html, "utf8") > MAX_HTML_BYTES) {
-      return toolError(`html must not exceed ${MAX_HTML_BYTES} bytes.`);
-    }
+  server.registerTool(
+    "list_projects",
+    {
+      title: "List projects",
+      description: "List stored projects for selection.",
+      outputSchema: { projects: projectsSchema },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async () => {
+      const projects = await listProjects();
+      return toolResult(
+        {
+          projects: projects.map((project) =>
+            projectForResponse(project, requestOrigin),
+          ),
+        },
+        `Found ${projects.length} project(s).`,
+      );
+    },
+  );
 
-    await saveEditHtml(project_id, html);
-    const savedProject = await saveProject({
-      ...project,
-      ...(title ? { title } : {}),
-      status: "html_ready",
-      previewUrl: createPublicUrl(`/projects/${project_id}/edit.html`, requestOrigin),
-    });
-    return toolResult(
-      { project: projectForResponse(savedProject, requestOrigin) },
-      `Saved edit HTML for project ${project_id}.`,
-    );
-  });
+  server.registerTool(
+    "save_edit_content",
+    {
+      title: "Save dynamic edit content",
+      description:
+        "Insert a dynamic HTML fragment into the standard blank edit wrapper and save the resulting preview.",
+      inputSchema: {
+        project_id: z.string().uuid(),
+        title: z.string().trim().min(1).max(200),
+        content_html: z.string().trim().min(1).max(MAX_HTML_BYTES),
+      },
+      outputSchema: { project: projectSchema },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ project_id, title, content_html }) => {
+      const project = await getProject(project_id);
+
+      if (!project) {
+        return toolError(`Project ${project_id} was not found.`);
+      }
+
+      const html = await renderEditWrapper({ title, contentHtml: content_html });
+      if (Buffer.byteLength(html, "utf8") > MAX_HTML_BYTES) {
+        return toolError(`Rendered edit must not exceed ${MAX_HTML_BYTES} bytes.`);
+      }
+
+      await saveEditHtml(project_id, html);
+      const savedProject = await saveProject({
+        ...project,
+        title,
+        status: "html_ready",
+        previewUrl: createPublicUrl(
+          `/projects/${project_id}/edit.html`,
+          requestOrigin,
+        ),
+      });
+      return toolResult(
+        { project: projectForResponse(savedProject, requestOrigin) },
+        `Saved dynamic edit content for project ${project_id}.`,
+      );
+    },
+  );
+
+  server.registerTool(
+    "save_edit_html",
+    {
+      title: "Save edit HTML",
+      description:
+        "Save a complete, self-contained HTML edit mockup for one project.",
+      inputSchema: {
+        project_id: z.string().uuid(),
+        html: z.string().trim().min(1).max(MAX_HTML_BYTES),
+        title: z.string().trim().min(1).max(200).optional(),
+      },
+      outputSchema: { project: projectSchema },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ project_id, html, title }) => {
+      const project = await getProject(project_id);
+
+      if (!project) {
+        return toolError(`Project ${project_id} was not found.`);
+      }
+
+      if (Buffer.byteLength(html, "utf8") > MAX_HTML_BYTES) {
+        return toolError(`html must not exceed ${MAX_HTML_BYTES} bytes.`);
+      }
+
+      await saveEditHtml(project_id, html);
+      const savedProject = await saveProject({
+        ...project,
+        ...(title ? { title } : {}),
+        status: "html_ready",
+        previewUrl: createPublicUrl(
+          `/projects/${project_id}/edit.html`,
+          requestOrigin,
+        ),
+      });
+      return toolResult(
+        { project: projectForResponse(savedProject, requestOrigin) },
+        `Saved edit HTML for project ${project_id}.`,
+      );
+    },
+  );
 
   return server;
 }
@@ -276,12 +409,16 @@ async function readJsonBody(request) {
 }
 
 function sendJson(response, statusCode, body) {
-  response.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8" });
+  response.writeHead(statusCode, {
+    "Content-Type": "application/json; charset=utf-8",
+  });
   response.end(JSON.stringify(body));
 }
 
 function sendHtml(response, statusCode, html) {
-  response.writeHead(statusCode, { "Content-Type": "text/html; charset=utf-8" });
+  response.writeHead(statusCode, {
+    "Content-Type": "text/html; charset=utf-8",
+  });
   response.end(html);
 }
 
@@ -291,7 +428,10 @@ function sendText(response, statusCode, text, contentType) {
 }
 
 const httpServer = createServer(async (request, response) => {
-  const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
+  const url = new URL(
+    request.url ?? "/",
+    `http://${request.headers.host ?? "localhost"}`,
+  );
 
   if (request.method === "GET" && url.pathname === "/") {
     return sendJson(response, 200, {
@@ -318,13 +458,19 @@ const httpServer = createServer(async (request, response) => {
     }
   }
 
-  const previewMatch = url.pathname.match(/^\/projects\/([^/]+)\/(?:preview|edit\.html)$/);
+  const previewMatch = url.pathname.match(
+    /^\/projects\/([^/]+)\/(?:preview|edit\.html)$/,
+  );
   if (request.method === "GET" && previewMatch) {
     try {
       const html = await getEditHtml(decodeURIComponent(previewMatch[1]));
 
       if (html === null) {
-        return sendHtml(response, 404, "<!doctype html><title>Chưa có bản edit HTML</title><p>Chưa có bản edit HTML cho project này.</p>");
+        return sendHtml(
+          response,
+          404,
+          "<!doctype html><title>Chưa có bản edit HTML</title><p>Chưa có bản edit HTML cho project này.</p>",
+        );
       }
 
       return sendHtml(response, 200, html);
@@ -352,8 +498,12 @@ const httpServer = createServer(async (request, response) => {
 
   try {
     const body = await readJsonBody(request);
-    const server = createMcpServer({ requestOrigin: getRequestOrigin(request) });
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    const server = createMcpServer({
+      requestOrigin: getRequestOrigin(request),
+    });
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+    });
 
     await server.connect(transport);
     response.on("close", () => {
@@ -374,7 +524,9 @@ const httpServer = createServer(async (request, response) => {
 });
 
 httpServer.listen(PORT, () => {
-  console.log(`YouTube HTML Editor MCP server listening on http://localhost:${PORT}`);
+  console.log(
+    `YouTube HTML Editor MCP server listening on http://localhost:${PORT}`,
+  );
 });
 
 export { httpServer };

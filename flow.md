@@ -1,4 +1,5 @@
 Luồng hoạt động của widget này gồm hai quy trình chính:
+https://chatgpt.com/share/6a7deb0a-7c20-83ec-a9f3-c13746e2d6a4
 
 1.  Luồng tạo project và phân tích video
     sequenceDiagram

@@ -306,7 +306,7 @@
       <section class="shell">
         <header class="hero">
           <span class="eyebrow">MCP App · Create Project</span>
-          <h1>Phân tích video trước, lưu HTML sau.</h1>
+          <h1>Phân tích video, rồi dựng bản edit có chuyển cảnh.</h1>
           <p class="lede">
             Nhập link YouTube để tạo project. Sau khi tạo thành công, widget sẽ gửi
             `project_id` và URL vào đúng conversation để ChatGPT tự phân tích đầy đủ video.
@@ -392,8 +392,8 @@
               </div>
 
               <div class="actions">
-                <button id="generate-html-button" type="button">Tạo bản edit bằng HTML</button>
-                <span class="hint">Widget sẽ gửi `ui/message` để ChatGPT gọi `save_edit_html`.</span>
+                <button id="generate-html-button" type="button">Tạo edit HTML &amp; animation</button>
+                <span class="hint">ChatGPT sẽ tạo phần edit động trong wrapper chung rồi gọi `save_edit_content`.</span>
               </div>
 
               <p class="meta-note">
@@ -527,11 +527,6 @@
           return;
         }
 
-        await state.app.sendMessage({
-          role: "user",
-          content: [{ type: "text", text }],
-        });
-
         await state.app.updateModelContext({
           structuredContent: {
             current_project: {
@@ -542,6 +537,11 @@
               previewUrl: project.previewUrl,
             },
           },
+        });
+
+        await state.app.sendMessage({
+          role: "user",
+          content: [{ type: "text", text }],
         });
 
         setStatus(
@@ -553,26 +553,36 @@
 
       async function sendGenerateHtmlMessage(project) {
         const text = [
-          `Dựa vào phần phân tích đã có trong conversation, hãy tạo bản edit bằng HTML cho project này.`,
+          "NHIỆM VỤ: Dựa vào phần phân tích video đã có trong conversation, hãy dựng phần nội dung động cho một bản edit có thể preview và chạy được ngay.",
           `project_id: ${project.id}`,
           `source_url: ${project.sourceUrl}`,
-          "Hãy tạo một tài liệu HTML tự chứa hoàn chỉnh rồi bắt buộc gọi save_edit_html cho đúng project_id.",
-          "Chỉ thông báo hoàn tất sau khi tool save_edit_html thành công.",
+          "Mục tiêu: chuyển phần phân tích thành một short-form edit dọc 9:16 có nhịp dựng rõ ràng, không phải chỉ là một trang mô tả hoặc storyboard tĩnh.",
+          "Server đã có wrapper HTML cha tối giản với vùng #edit-root và window.EditShell. Không tạo <!doctype html>, <html>, <head> hay <body>; chỉ tạo content_html là phần con để đặt trong #edit-root.",
+          "",
+          "Yêu cầu nội dung và scene:",
+          "1. Tạo 6–10 scene theo cấu trúc hook → vấn đề/bối cảnh → các ý chính → payoff → CTA. Nội dung từng scene phải bám sát video đã phân tích; không dùng lorem ipsum hay placeholder.",
+          "2. Mỗi scene cần có thời lượng hợp lý, timecode/timeline và caption hoặc narration tương ứng. Hook phải đọc được trong khoảng 2 giây đầu.",
+          "3. Tự quyết định layout preview, play/pause, timeline, nút chuyển bước hoặc các controls phù hợp với edit này. Wrapper cha không áp đặt scene, animation hay UI nào.",
+          "",
+          "Yêu cầu animation và chuyển scene:",
+          "4. Mỗi scene phải có animation vào rõ ràng: kinetic text hoặc stagger caption, cùng ít nhất một chuyển động nền/visual có chủ đích. Dùng CSS keyframes và JavaScript thuần; không phụ thuộc thư viện hoặc asset ngoài.",
+          "5. Khi đổi scene phải có transition nhìn thấy được (cross-fade, swipe, zoom hoặc blur phù hợp với nhịp nội dung), khoảng 300–600ms. Không được nhảy scene đột ngột bằng cách chỉ đổi display/opacity.",
+          "6. Animation phải tự khởi động lại khi scene được vào lại, chạy mượt khi play/scrub/next/previous và tôn trọng prefers-reduced-motion.",
+          "",
+          "Yêu cầu kỹ thuật và bàn giao:",
+          "7. content_html có thể chứa <style>, markup và <script> tự chạy; không cần backend, build step hay API key. Có thể dùng window.EditShell.root hoặc window.EditShell.ready() nếu cần.",
+          "8. Viết mã hoàn chỉnh, không để TODO, không chỉ gửi code trong chat. Sau khi tạo xong, BẮT BUỘC gọi tool save_edit_content với title, content_html và đúng project_id ở trên.",
+          "Chỉ thông báo hoàn tất sau khi tool save_edit_content thành công.",
         ].join("\n");
 
         if (!isBridgeReady()) {
           setStatus(
             actionStatus,
-            `Project ${project.id} đã được chọn nhưng standalone mode không gửi được ui/message. Hãy mở app trong ChatGPT để yêu cầu save_edit_html.`,
+            `Project ${project.id} đã được chọn nhưng standalone mode không gửi được ui/message. Hãy mở app trong ChatGPT để yêu cầu save_edit_content.`,
             "success",
           );
           return;
         }
-
-        await state.app.sendMessage({
-          role: "user",
-          content: [{ type: "text", text }],
-        });
 
         await state.app.updateModelContext({
           structuredContent: {
@@ -586,9 +596,14 @@
           },
         });
 
+        await state.app.sendMessage({
+          role: "user",
+          content: [{ type: "text", text }],
+        });
+
         setStatus(
           actionStatus,
-          `Đã gửi yêu cầu tạo HTML cho project ${project.id}. Đang chờ save_edit_html...`,
+          `Đã giao ChatGPT dựng nội dung edit động cho project ${project.id}. Đang chờ save_edit_content...`,
           "success",
         );
       }
@@ -741,7 +756,7 @@
         );
 
         app.ontoolresult = async (event) => {
-          if (event.toolName === "save_edit_html") {
+          if (event.toolName === "save_edit_content" || event.toolName === "save_edit_html") {
             const savedProject = event.result?.structuredContent?.project;
 
             if (savedProject) {
@@ -910,7 +925,7 @@
           return;
         }
 
-        setButtonBusy(generateHtmlButton, true, "Đang gửi yêu cầu…", "Tạo bản edit bằng HTML");
+        setButtonBusy(generateHtmlButton, true, "Đang gửi yêu cầu…", "Tạo edit HTML & animation");
 
         try {
           await sendGenerateHtmlMessage(state.project);
@@ -922,7 +937,7 @@
             "error",
           );
         } finally {
-          setButtonBusy(generateHtmlButton, false, "Đang gửi yêu cầu…", "Tạo bản edit bằng HTML");
+          setButtonBusy(generateHtmlButton, false, "Đang gửi yêu cầu…", "Tạo edit HTML & animation");
         }
       });
     </script>

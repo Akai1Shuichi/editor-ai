@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>__EDIT_TITLE__</title>
+    <style>
+      /* Shared parent only. The child edit owns all visuals, scenes and motion. */
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { min-height: 100%; margin: 0; }
+      body { background: #0a0a0a; }
+      #edit-root { min-height: 100vh; }
+    </style>
+    <script>
+      window.EditShell = Object.freeze({
+        get root() { return document.getElementById("edit-root"); },
+        mount(content) {
+          this.root.replaceChildren();
+          this.root.insertAdjacentHTML("afterbegin", content);
+          return this.root;
+        },
+        ready(detail = {}) {
+          window.dispatchEvent(new CustomEvent("edit-shell-ready", { detail }));
+        },
+      });
+    </script>
+  </head>
+  <body>
+    <main id="edit-root" data-edit-wrapper="true">
+      __EDIT_CONTENT__
+    </main>
+  </body>
+</html>
