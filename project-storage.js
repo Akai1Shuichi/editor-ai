@@ -46,11 +46,20 @@ export function validateYouTubeUrl(sourceUrl) {
   return parsedUrl.toString();
 }
 
-export async function createProject(title, sourceUrl) {
+export async function createProject(title, { sourceType, sourceUrl, scriptPrompt }) {
   const normalizedTitle = String(title ?? "").trim();
 
   if (!normalizedTitle) {
     throw new TypeError("title is required.");
+  }
+
+  if (sourceType !== "youtube" && sourceType !== "script") {
+    throw new TypeError("sourceType must be either youtube or script.");
+  }
+
+  const normalizedScriptPrompt = String(scriptPrompt ?? "").trim();
+  if (sourceType === "script" && !normalizedScriptPrompt) {
+    throw new TypeError("scriptPrompt is required when sourceType is script.");
   }
 
   const id = randomUUID();
@@ -58,7 +67,9 @@ export async function createProject(title, sourceUrl) {
   const project = {
     id,
     title: normalizedTitle,
-    sourceUrl: validateYouTubeUrl(sourceUrl),
+    sourceType,
+    sourceUrl: sourceType === "youtube" ? validateYouTubeUrl(sourceUrl) : null,
+    scriptPrompt: sourceType === "script" ? normalizedScriptPrompt : null,
     status: "created",
     createdAt: timestamp,
     updatedAt: timestamp,

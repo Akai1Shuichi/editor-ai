@@ -132,6 +132,10 @@
         gap: 8px;
       }
 
+      .field[hidden] {
+        display: none;
+      }
+
       label {
         font-size: 13px;
         font-weight: 700;
@@ -139,7 +143,8 @@
         text-transform: uppercase;
       }
 
-      input {
+      input,
+      textarea {
         width: 100%;
         padding: 14px 16px;
         border: 1px solid rgba(23, 18, 12, 0.14);
@@ -159,7 +164,14 @@
         font: inherit;
       }
 
+      textarea {
+        min-height: 160px;
+        resize: vertical;
+        line-height: 1.5;
+      }
+
       input:focus,
+      textarea:focus,
       select:focus {
         outline: 2px solid rgba(194, 77, 44, 0.28);
         outline-offset: 2px;
@@ -254,6 +266,15 @@
         word-break: break-word;
       }
 
+      #project-source,
+      #project-source a {
+        display: block;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
       a {
         color: var(--accent-deep);
       }
@@ -323,6 +344,14 @@
                 </div>
 
                 <div class="field">
+                  <label for="source-type">Source type</label>
+                  <select id="source-type" name="source_type">
+                    <option value="youtube">YouTube link</option>
+                    <option value="script">Script text prompt</option>
+                  </select>
+                </div>
+
+                <div class="field" id="youtube-source-field">
                   <label for="source-url">Source URL</label>
                   <input
                     id="source-url"
@@ -332,6 +361,11 @@
                     placeholder="https://www.youtube.com/watch?v=..."
                     required
                   />
+                </div>
+
+                <div class="field" id="script-source-field" hidden>
+                  <label for="script-prompt">Script / text prompt</label>
+                  <textarea id="script-prompt" name="script_prompt" maxlength="20000" placeholder="Paste the script, voice-over, hook, CTA, or a creative brief for the video..."></textarea>
                 </div>
 
                 <div class="actions">
@@ -359,8 +393,8 @@
                   <dd id="project-status">-</dd>
                 </div>
                 <div>
-                  <dt>Source URL</dt>
-                  <dd><a id="project-url" href="#" rel="noreferrer" target="_blank">-</a></dd>
+                  <dt>Source</dt>
+                  <dd id="project-source" title="-">-</dd>
                 </div>
                 <div>
                   <dt>Preview</dt>
@@ -415,14 +449,18 @@
 
       const form = document.getElementById("create-project-form");
       const titleInput = document.getElementById("title");
+      const sourceTypeInput = document.getElementById("source-type");
       const sourceUrlInput = document.getElementById("source-url");
+      const scriptPromptInput = document.getElementById("script-prompt");
+      const youtubeSourceField = document.getElementById("youtube-source-field");
+      const scriptSourceField = document.getElementById("script-source-field");
       const submitButton = document.getElementById("submit-button");
       const connectionStatus = document.getElementById("connection-status");
       const actionStatus = document.getElementById("action-status");
       const projectPanel = document.getElementById("project-panel");
       const projectIdNode = document.getElementById("project-id");
       const projectStatusNode = document.getElementById("project-status");
-      const projectUrlNode = document.getElementById("project-url");
+      const projectSourceNode = document.getElementById("project-source");
       const projectPreviewNode = document.getElementById("project-preview");
       const projectSelect = document.getElementById("project-select");
       const refreshListButton = document.getElementById("refresh-list-button");
@@ -446,6 +484,14 @@
       function setSubmitting(submitting) {
         submitButton.disabled = submitting;
         submitButton.textContent = submitting ? "Đang tạo project…" : "Tạo project & phân tích";
+      }
+
+      function updateSourceFields() {
+        const isYouTube = sourceTypeInput.value === "youtube";
+        youtubeSourceField.hidden = !isYouTube;
+        scriptSourceField.hidden = isYouTube;
+        sourceUrlInput.required = isYouTube;
+        scriptPromptInput.required = !isYouTube;
       }
 
       function isBridgeReady() {
@@ -511,11 +557,15 @@
       }
 
       async function sendAnalysisMessage(project) {
+        const isScript = project.sourceType === "script";
         const text = [
-          `Hãy phân tích đầy đủ video YouTube này trong conversation hiện tại: ${project.sourceUrl}`,
+          isScript
+            ? `Use this script text prompt as the creative brief for the video edit: ${project.scriptPrompt}`
+            : `Hãy phân tích đầy đủ video YouTube này trong conversation hiện tại: ${project.sourceUrl}`,
           `project_id: ${project.id}`,
-          "Không dùng MCP server để tải hay phân tích video.",
-          "Hãy tự phân tích đầy đủ nội dung, cấu trúc, hook, nhịp dựng, caption, CTA và các ý edit phù hợp.",
+          isScript
+            ? "Propose the hook, pacing, captions, visual treatment, effects, and CTA that fit the script."
+            : "Không dùng MCP server để tải hay phân tích video. Hãy tự phân tích đầy đủ nội dung, cấu trúc, hook, nhịp dựng, caption, CTA và các ý edit phù hợp.",
         ].join("\n");
 
         if (!isBridgeReady()) {
@@ -532,7 +582,9 @@
             current_project: {
               id: project.id,
               title: project.title,
+              sourceType: project.sourceType ?? "youtube",
               sourceUrl: project.sourceUrl,
+              scriptPrompt: project.scriptPrompt ?? null,
               status: project.status,
               previewUrl: project.previewUrl,
             },
@@ -552,9 +604,12 @@
       }
 
       async function sendGenerateHtmlMessage(project) {
+        const sourceDetail = project.sourceType === "script"
+          ? `script_prompt: ${project.scriptPrompt}`
+          : `source_url: ${project.sourceUrl}`;
         const text = [
           "NHIỆM VỤ: Dựa vào phần phân tích video đã có trong conversation, hãy dựng phần nội dung động cho một bản edit có thể preview và chạy được ngay.",
-          `project_id: ${project.id}`,
+            sourceDetail,
           `source_url: ${project.sourceUrl}`,
           "Mục tiêu: chuyển phần phân tích thành một short-form edit dọc 9:16 có nhịp dựng rõ ràng, không phải chỉ là một trang mô tả hoặc storyboard tĩnh.",
           "Server đã có wrapper HTML cha tối giản với vùng #edit-root và window.EditShell. Không tạo <!doctype html>, <html>, <head> hay <body>; chỉ tạo content_html là phần con để đặt trong #edit-root.",
@@ -589,7 +644,9 @@
             current_project: {
               id: project.id,
               title: project.title,
+              sourceType: project.sourceType ?? "youtube",
               sourceUrl: project.sourceUrl,
+              scriptPrompt: project.scriptPrompt ?? null,
               status: project.status,
               previewUrl: project.previewUrl,
             },
@@ -621,8 +678,20 @@
         projectPanel.hidden = false;
         projectIdNode.textContent = project.id;
         projectStatusNode.textContent = project.status;
-        projectUrlNode.textContent = project.sourceUrl;
-        projectUrlNode.href = project.sourceUrl;
+        if (project.sourceType === "script") {
+          const source = `Script: ${project.scriptPrompt}`;
+          projectSourceNode.textContent = source;
+          projectSourceNode.title = source;
+        } else {
+          const link = document.createElement("a");
+          link.href = project.sourceUrl;
+          link.target = "_blank";
+          link.rel = "noreferrer";
+          link.textContent = project.sourceUrl;
+          link.title = project.sourceUrl;
+          projectSourceNode.title = project.sourceUrl;
+          projectSourceNode.replaceChildren(link);
+        }
         projectSelect.value = project.id;
         if (project.previewUrl) {
           projectPreviewNode.textContent = project.previewUrl;
@@ -830,6 +899,9 @@
         projectSelect.innerHTML = '<option value="">Không tải được project</option>';
       }
 
+      sourceTypeInput.addEventListener("change", updateSourceFields);
+      updateSourceFields();
+
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         setSubmitting(true);
@@ -837,8 +909,10 @@
 
         try {
           const title = titleInput.value.trim();
-          const sourceUrl = sourceUrlInput.value.trim();
-          const result = await createProject({ title, source_url: sourceUrl });
+          const sourceType = sourceTypeInput.value;
+          const result = await createProject(sourceType === "youtube"
+            ? { title, source_type: sourceType, source_url: sourceUrlInput.value.trim() }
+            : { title, source_type: sourceType, script_prompt: scriptPromptInput.value.trim() });
           const project = result.structuredContent?.project;
 
           if (!project) {

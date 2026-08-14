@@ -27,7 +27,7 @@ const require = createRequire(import.meta.url);
 const PORT = Number.parseInt(process.env.PORT ?? "8787", 10);
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL?.replace(/\/$/, "") ?? null;
 const MAX_HTML_BYTES = 1_000_000;
-const APP_RESOURCE_URI = "ui://youtube-html-editor/app-v0-3.html";
+const APP_RESOURCE_URI = "ui://youtube-html-editor/app.html";
 const APP_HTML_PATH = join(__dirname, "public", "app.html");
 const EMPTY_WIDGET_PATH = join(__dirname, "public", "editor-widget.html");
 const EDIT_WRAPPER_PATH = join(__dirname, "data", "template", "edit_wrapper.html");
@@ -37,7 +37,9 @@ const APP_CSP = {
 const projectSchema = z.object({
   id: z.string().uuid(),
   title: z.string(),
-  sourceUrl: z.string().url(),
+  sourceType: z.enum(["youtube", "script"]).optional(),
+  sourceUrl: z.string().url().nullable(),
+  scriptPrompt: z.string().nullable().optional(),
   status: z.enum(["created", "html_ready"]),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -155,7 +157,7 @@ function createMcpServer({ requestOrigin } = {}) {
     name: "youtube-html-editor",
     version: "0.1.0",
     instructions: [
-      "When the user provides a YouTube URL, analyze the video yourself in the ChatGPT conversation.",
+      "A project can come from a YouTube URL or a written script prompt. For YouTube, analyze the video yourself in the ChatGPT conversation. For a script prompt, use the supplied script as the creative brief.",
       "This MCP server only stores projects and HTML. It does not download, scrape, or analyze YouTube videos.",
       "When the user asks for an edit, use save_edit_content. The server wraps your dynamic content in a minimal, stable parent HTML document with #edit-root and window.EditShell.",
       "Send only the dynamic child fragment in content_html: it may include its own style, markup and script. You own the design, scenes, animations, transitions and controls; the shared parent intentionally contains none of these.",
@@ -226,31 +228,35 @@ function createMcpServer({ requestOrigin } = {}) {
     },
   );
 
-  server.registerTool(
-    "create_project",
-    {
-      title: "Create project",
-      description: "Create a project from a title and a valid YouTube URL.",
-      inputSchema: {
-        title: z.string().trim().min(1).max(200),
-        source_url: z.string().trim().url(),
-      },
-      outputSchema: { project: projectSchema },
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        openWorldHint: false,
-      },
+  server.registerTool("create_project", {
+    title: "Create project",
+    description: "Create a project from a title and either a valid YouTube URL or a written script prompt.",
+    inputSchema: {
+      title: z.string().trim().min(1).max(200),
+      source_type: z.enum(["youtube", "script"]),
+      source_url: z.string().trim().url().optional(),
+      script_prompt: z.string().trim().min(1).max(20_000).optional(),
     },
-    async ({ title, source_url }) => {
-      try {
-        const project = await createProject(title, source_url);
-        return toolResult({ project }, `Created project ${project.id}.`);
-      } catch (error) {
-        return toolError(error.message);
+    outputSchema: { project: projectSchema },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  }, async ({ title, source_type, source_url, script_prompt }) => {
+    try {
+      if (source_type === "youtube" && !source_url) {
+        throw new TypeError("source_url is required for a YouTube project.");
       }
-    },
-  );
+      if (source_type === "script" && !script_prompt) {
+        throw new TypeError("script_prompt is required for a script project.");
+      }
+      const project = await createProject(title, {
+        sourceType: source_type,
+        sourceUrl: source_url,
+        scriptPrompt: script_prompt,
+      });
+      return toolResult({ project }, `Created project ${project.id}.`);
+    } catch (error) {
+      return toolError(error.message);
+    }
+  });
 
   server.registerTool(
     "get_project",
